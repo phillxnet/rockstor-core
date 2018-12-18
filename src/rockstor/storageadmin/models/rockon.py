@@ -78,7 +78,7 @@ class DContainerLink(models.Model):
     name = models.CharField(max_length=64, null=True)
 
     class Meta:
-        unique_together = ('destination', 'name')
+        unique_together = ('source', 'destination', 'name')
         app_label = 'storageadmin'
 
 

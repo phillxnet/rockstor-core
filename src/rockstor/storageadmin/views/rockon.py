@@ -351,6 +351,15 @@ class RockOnView(rfc.GenericView):
                     source=sco, destination=co)
                 clo.name = cl_d['name']
                 clo.save()
+            for no in DContainerLink.objects.filter(name=clo.name):
+                logger.debug('net.object no.id is: {}'.format(no.id))
+                logger.debug('net.object no.name is: {}'.format(no.name))
+                logger.debug('net.object no.source is: {}'.format(no.source_id))
+                logger.debug('net.object no.destination is: {}'.format(no.destination_id))
+                # Get corresponding names
+                logger.debug('source name is: {}'.format(no.source.name))
+                logger.debug('destination name is: {}'.format(no.destination.name))
+                logger.debug('network name is: {}'.format(no.name))
         self._update_cc(ro, r_d)
 
     def _sorted_keys(self, cd):
