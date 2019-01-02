@@ -22,6 +22,7 @@ import re
 
 from .exceptions import CommandException
 from .osi import run_command
+from storageadmin.views.rockon_helpers import dnets
 
 
 NMCLI = '/usr/bin/nmcli'
@@ -150,6 +151,16 @@ def connections():
                 elif (tmap['ctype'] in ('team', 'bond')):
                     tmap[tmap['ctype']] = {
                         'config': None
+                    }
+                elif (tmap['ctype'] == 'bridge'):
+                    cid, _, _ = run_command([NMCLI, '-g', 'connection.id', 'c', 'show', uuid, ])
+                    if (cid[0].startswith('br-')):
+                        tmap[tmap['ctype']] = {
+                            'docker_name': dnets(cid[0][3:])[0],
+                    }
+                    else:
+                        tmap[tmap['ctype']] = {
+                            'docker_name': cid[0],
                     }
                 else:
                     tmap[tmap['ctype']] = {}

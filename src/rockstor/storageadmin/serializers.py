@@ -185,6 +185,7 @@ class NetworkConnectionSerializer(serializers.ModelSerializer):
     mtu = serializers.IntegerField()
     team_profile = serializers.CharField()
     bond_profile = serializers.CharField()
+    docker_name = serializers.CharField()
 
     class Meta:
         model = NetworkConnection

@@ -222,31 +222,48 @@ def envars(container):
     return var_list
 
 
+def dnets(id=None, type=None):
+    cmd = list(DNET) + ['ls',
+                        # '--filter', 'type=custom',
+                        '--format', '{{.Name}}']
+    if id:
+        cmd.extend(['--filter', 'id={}'.format(id)])
+    if type is not None:
+        if (type == 'custom'):
+            cmd.extend((['--filter', 'type=custom']))
+        elif (type == 'builtin'):
+            cmd.extend((['--filter', 'type=builtin']))
+        else:
+            raise Exception('type must be custom or builtin')
+    o, e, rc = run_command(cmd)
+    return o[:-1]
+
+
 def probe_running_containers(container=None, network=None):
     if network:
-        c_list = run_command(
+        o, e, rc = run_command(
             [DOCKER, 'ps', '--format', '{{.Names}}', '--filter', 'network={}'.format(network), ])
     elif container:
-        c_list = run_command([DOCKER, 'ps', '--format', '{{.Names}}',
-                              '--filter', 'status=created',
-                              '--filter', 'status=restarting',
-                              '--filter', 'status=running',
-                              '--filter', 'status=paused',
-                              '--filter', 'name={}'.format(container), ])
+        o, e, rc = run_command([DOCKER, 'ps', '--format', '{{.Names}}',
+                                '--filter', 'status=created',
+                                '--filter', 'status=restarting',
+                                '--filter', 'status=running',
+                                '--filter', 'status=paused',
+                                '--filter', 'name={}'.format(container), ])
     else:
-        c_list = run_command([DOCKER, 'ps', '--format', '{{.Names}}',
-                              '--filter', 'status=created',
-                              '--filter', 'status=restarting',
-                              '--filter', 'status=running',
-                              '--filter', 'status=paused', ])
-    return c_list[0]
+        o, e, rc = run_command([DOCKER, 'ps', '--format', '{{.Names}}',
+                                '--filter', 'status=created',
+                                '--filter', 'status=restarting',
+                                '--filter', 'status=running',
+                                '--filter', 'status=paused', ])
+    return o
 
 
 def dnet_remove(container):
     for lo in DContainerLink.objects.filter(destination=container):
-        nets = run_command(list(DNET) + ['list', '--format', '{{.Name}}', ])
+        o, e, rc = run_command(list(DNET) + ['list', '--format', '{{.Name}}', ])
         logger.debug('the network name is: {}'.format(lo.name))
-        if (lo.name in nets[0]):
+        if (lo.name in o):
             logger.debug('the network {} WAS detected, so delete it now.'.format(lo.name))
             run_command(list(DNET) + ['rm', lo.name, ])
             logger.debug('the network {} is now deleted.'.format(lo.name))
@@ -255,8 +272,8 @@ def dnet_remove(container):
 
 
 def dnet_create(network):
-    nets = run_command(list(DNET) + ['list', '--format', '{{.Name}}', ])
-    if (network not in nets[0]):
+    o, e, rc = run_command(list(DNET) + ['list', '--format', '{{.Name}}', ])
+    if (network not in o):
         logger.debug('the network {} was NOT detected, so create it now.'.format(network))
         run_command(list(DNET) + ['create', network, ])
     else:

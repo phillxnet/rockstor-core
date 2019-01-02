@@ -25,7 +25,8 @@ from nfs_export import NFSExport  # noqa E501
 from iscsi_target import IscsiTarget  # noqa E501
 from api_keys import APIKeys  # noqa E501
 from network_interface import (NetworkConnection, NetworkDevice,  # noqa E501
-                               EthernetConnection, TeamConnection, BondConnection)  # noqa E501
+                               EthernetConnection, TeamConnection, BondConnection,
+                               BridgeConnection)  # noqa E501
 from appliance import Appliance  # noqa E501
 from support_case import SupportCase  # noqa E501
 from dashboard_config import DashboardConfig  # noqa E501

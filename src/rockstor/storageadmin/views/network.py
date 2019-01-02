@@ -22,7 +22,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from storageadmin.models import (NetworkConnection, NetworkDevice,
                                  EthernetConnection, TeamConnection,
-                                 BondConnection)
+                                 BondConnection, BridgeConnection)
 from smart_manager.models import Service
 from storageadmin.util import handle_exception
 from storageadmin.serializers import (NetworkDeviceSerializer,
@@ -39,6 +39,7 @@ DEFAULT_MTU = MIN_MTU
 
 
 class NetworkMixin(object):
+    logger.debug('The class NetworkMixin has been initialized')
     # Runners for teams. @todo: support basic defaults + custom configuration.
     # @todo: lacp doesn't seem to be activating
     runners = {
@@ -56,6 +57,7 @@ class NetworkMixin(object):
     @staticmethod
     @transaction.atomic
     def _update_or_create_ctype(co, ctype, config):
+        logger.debug('The function _update_or_create_ctype has been called')
         if (ctype == '802-3-ethernet'):
             try:
                 eco = EthernetConnection.objects.get(connection=co)
@@ -81,6 +83,14 @@ class NetworkMixin(object):
                 bco.save()
             except BondConnection.DoesNotExist:
                 BondConnection.objects.create(connection=co, **config)
+        elif (ctype == 'bridge'):
+            try:
+                brco = BridgeConnection.objects.get(connection=co)
+                brco.docker_name = config['docker_name']
+                brco.save()
+            except BridgeConnection.DoesNotExist:
+                BridgeConnection.objects.create(connection=co, **config)
+
         else:
             logger.error('Unknown ctype: {} config: {}'.format(ctype, config))
 
@@ -101,6 +111,7 @@ class NetworkMixin(object):
     @classmethod
     @transaction.atomic
     def _refresh_connections(cls):
+        logger.debug('The function _refresh_connections has been called')
         cmap = network.connections()
         defer_master_updates = []
         for nco in NetworkConnection.objects.all():
@@ -184,6 +195,7 @@ class NetworkDeviceListView(rfc.GenericView, NetworkMixin):
 
 
 class NetworkConnectionListView(rfc.GenericView, NetworkMixin):
+    logger.debug('The class NetworkConnectionListView has been initialized')
     serializer_class = NetworkConnectionSerializer
     ctypes = ('ethernet', 'team', 'bond')
 
@@ -192,6 +204,7 @@ class NetworkConnectionListView(rfc.GenericView, NetworkMixin):
     config_methods = ('auto', 'manual')
 
     def get_queryset(self, *args, **kwargs):
+        logger.debug('The method get_queryset of the class NetworkConnectionListView has been called')
         with self._handle_exception(self.request):
             self._refresh_connections()
             return NetworkConnection.objects.all()
