@@ -240,22 +240,18 @@ def dnets(id=None, type=None):
 
 
 def probe_running_containers(container=None, network=None):
+    cmd = [DOCKER, 'ps', '--format', '{{.Names}}', ]
+    running_filters = ['--filter', 'status=created',
+                       '--filter', 'status=restarting',
+                       '--filter', 'status=running',
+                       '--filter', 'status=paused', ]
     if network:
-        o, e, rc = run_command(
-            [DOCKER, 'ps', '--format', '{{.Names}}', '--filter', 'network={}'.format(network), ])
+        cmd.extend((['--filter', 'network={}'.format(network),]))
     elif container:
-        o, e, rc = run_command([DOCKER, 'ps', '--format', '{{.Names}}',
-                                '--filter', 'status=created',
-                                '--filter', 'status=restarting',
-                                '--filter', 'status=running',
-                                '--filter', 'status=paused',
-                                '--filter', 'name={}'.format(container), ])
+        cmd.extend((running_filters + ['--filter', 'name={}'.format(container), ]))
     else:
-        o, e, rc = run_command([DOCKER, 'ps', '--format', '{{.Names}}',
-                                '--filter', 'status=created',
-                                '--filter', 'status=restarting',
-                                '--filter', 'status=running',
-                                '--filter', 'status=paused', ])
+        cmd.extend((running_filters))
+    o, e, rc = run_command(cmd)
     return o
 
 
