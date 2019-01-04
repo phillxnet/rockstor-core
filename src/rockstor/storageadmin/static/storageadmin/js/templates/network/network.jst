@@ -50,8 +50,10 @@
                 <td class="accordion-toggle" data-toggle="collapse"
                     data-parent="#connections"
                     data-target="#accordion-{{this.id}}"><a> {{this.name}}</a>&nbsp;&nbsp;
+                    {{#unless this.docker_name}}
                     <a href="#network/edit/{{this.id}}"><i
                             class="glyphicon glyphicon-pencil"></i></a>
+                    {{/unless}}
                     <a id="{{this.id}}" data-action="delete" rel="tooltip"
                        title="Delete connection"><i
                             class="glyphicon glyphicon-trash"></i></a></td>
@@ -60,7 +62,7 @@
                     this.team_profile}}[{{this.team_profile}}]{{/if}}{{#if
                     this.bond_profile}}[{{this.bond_profile}}]{{/if}}
                 </td>
-                <td>{{this.state}}&nbsp;&nbsp;
+                <td>{{this.state}}&nbsp;&nbsp;{{#unless this.docker_name}}
                     <input type="checkbox" data-connection-id="{{this.id}}"
                            data-name="{{this.name}}" data-size="mini"
                            {{getState this.state}}>
@@ -69,6 +71,7 @@
                     <div class="simple-overlay" id="{{this.id}}-err-popup">
                         <div class="overlay-content"></div>
                     </div>
+                    {{/unless}}
                 </td>
                 <td>{{this.docker_name}}</td>
                 <td>{{this.ipv4_method}}</td>

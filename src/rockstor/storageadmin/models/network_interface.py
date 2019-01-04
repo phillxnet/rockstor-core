@@ -125,6 +125,18 @@ class NetworkConnection(models.Model):
             logger.debug('dname is {}.'.format(dname))
         return dname
 
+    # @property
+    # def docker_net(self):
+    #     dnet = None
+    #     if self.bridgeconnection_set.count() > 0:
+    #         brco = self.bridgeconnection_set.first()
+    #         dname = brco.docker_name
+    #         if dname is not None:
+    #             dnet = True
+    #         logger.debug('dname is {}, so dnet is set to {}.'.format(dname, dnet))
+    #     return dnet
+    #
+    #
     class Meta:
         app_label = 'storageadmin'
 
