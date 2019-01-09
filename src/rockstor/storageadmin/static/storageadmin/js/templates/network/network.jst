@@ -53,10 +53,17 @@
                     {{#unless this.docker_name}}
                     <a href="#network/edit/{{this.id}}"><i
                             class="glyphicon glyphicon-pencil"></i></a>
-                    {{/unless}}
                     <a id="{{this.id}}" data-action="delete" rel="tooltip"
                        title="Delete connection"><i
                             class="glyphicon glyphicon-trash"></i></a></td>
+                    {{/unless}}
+                    {{#if this.user_dnet}}
+                    <a href="#network/edit/{{this.id}}"><i
+                            class="glyphicon glyphicon-pencil"></i></a>
+                    <a id="{{this.id}}" data-action="delete" rel="tooltip"
+                       title="Delete connection"><i
+                            class="glyphicon glyphicon-trash"></i></a></td>
+                    {{/if}}
                 <td>{{this.uuid}}</td>
                 <td>{{this.ctype}} {{#if
                     this.team_profile}}[{{this.team_profile}}]{{/if}}{{#if

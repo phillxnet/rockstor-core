@@ -22,7 +22,8 @@ from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from storageadmin.models import (NetworkConnection, NetworkDevice,
                                  EthernetConnection, TeamConnection,
-                                 BondConnection, BridgeConnection)
+                                 BondConnection, BridgeConnection,
+                                 DContainerLink)
 from smart_manager.models import Service
 from storageadmin.util import handle_exception
 from storageadmin.serializers import (NetworkDeviceSerializer,
@@ -87,6 +88,12 @@ class NetworkMixin(object):
             try:
                 brco = BridgeConnection.objects.get(connection=co)
                 brco.docker_name = config['docker_name']
+                logger.debug('Views: docker_name is {} from db, {} from config'.format(brco.docker_name, config['docker_name']))
+                if (not DContainerLink.objects.filter(name=brco.docker_name)):
+                    logger.debug("{} is not in Container_Links".format(config['docker_name']))
+                    if ('docker0' not in config['docker_name']):
+                        logger.debug('{} is not docker0'.format(config['docker_name']))
+                        brco.usercon = True
                 brco.save()
             except BridgeConnection.DoesNotExist:
                 BridgeConnection.objects.create(connection=co, **config)

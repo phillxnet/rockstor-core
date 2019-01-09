@@ -125,6 +125,19 @@ class NetworkConnection(models.Model):
             logger.debug('dname is {}.'.format(dname))
         return dname
 
+    @property
+    def user_dnet(self):
+        logger.debug('The property method user_dnet has been triggered')
+        user_dnet = None
+        if self.bridgeconnection_set.count() > 0:
+            brco = self.bridgeconnection_set.first()
+            user_dnet = brco.usercon
+            logger.debug('default value for user_dnet is {}.'.format(user_dnet))
+            if user_dnet:
+                user_dnet = True
+                logger.debug('user_dnet is {}.'.format(user_dnet))
+        return user_dnet
+
     # @property
     # def docker_net(self):
     #     dnet = None
@@ -206,6 +219,7 @@ class BondConnection(models.Model):
 class BridgeConnection(models.Model):
     connection = models.ForeignKey(NetworkConnection, null=True)
     docker_name = models.CharField(max_length=64, null=True)
+    usercon = models.BooleanField(default=False)
 
     class Meta:
         app_label = 'storageadmin'
