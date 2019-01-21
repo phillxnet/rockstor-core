@@ -28,6 +28,9 @@ from smart_manager.models import Service
 from storageadmin.util import handle_exception
 from storageadmin.serializers import (NetworkDeviceSerializer,
                                       NetworkConnectionSerializer)
+from storageadmin.views.rockon_helpers import (dnet_create, dnet_remove,
+                                               probe_running_containers,
+                                               dnet_disconnect)
 from system import network
 import rest_framework_custom as rfc
 
@@ -204,7 +207,7 @@ class NetworkDeviceListView(rfc.GenericView, NetworkMixin):
 class NetworkConnectionListView(rfc.GenericView, NetworkMixin):
     logger.debug('The class NetworkConnectionListView has been initialized')
     serializer_class = NetworkConnectionSerializer
-    ctypes = ('ethernet', 'team', 'bond')
+    ctypes = ('ethernet', 'team', 'bond', 'docker')
 
     # ethtool is the default link watcher.
 
@@ -234,8 +237,11 @@ class NetworkConnectionListView(rfc.GenericView, NetworkMixin):
 
     @transaction.atomic
     def post(self, request):
+        logger.debug('the POST method of NetworkConnectionListView was activated')
         with self._handle_exception(request):
-            ipaddr = gateway = dns_servers = search_domains = None
+            ipaddr = gateway = dns_servers = search_domains = \
+            aux_address = dgateway = host_binding = icc = internal = \
+            ip_masquerade = ip_range = subnet = mtu = None
             name = request.data.get('name')
             if (NetworkConnection.objects.filter(name=name).exists()):
                 e_msg = ('Connection name ({}) is already in use. Choose a '
@@ -255,6 +261,15 @@ class NetworkConnectionListView(rfc.GenericView, NetworkMixin):
                 gateway = request.data.get('gateway', None)
                 dns_servers = request.data.get('dns_servers', None)
                 search_domains = request.data.get('search_domains', None)
+                aux_address = request.data.get('aux_address', None)
+                dgateway = request.data.get('dgateway', None)
+                host_binding = request.data.get('host_binding', None)
+                icc = request.data.get('icc')
+                internal = request.data.get('internal')
+                ip_masquerade = request.data.get('gateway')
+                ip_range = request.data.get('ip_range', None)
+                mtu = request.data.get('mtu', None)
+                subnet = request.data.get('subnet', None)
 
             # connection type can be one of ethernet, team or bond
             ctype = request.data.get('ctype')
@@ -294,6 +309,10 @@ class NetworkConnectionListView(rfc.GenericView, NetworkMixin):
                                             ipaddr, gateway, dns_servers,
                                             search_domains)
 
+            elif (ctype == 'docker'):
+                dnet_create(name, aux_address, dgateway, host_binding, icc,
+                            internal, ip_masquerade, ip_range, subnet, mtu)
+
             return Response()
 
 
@@ -318,6 +337,7 @@ class NetworkConnectionDetailView(rfc.GenericView, NetworkMixin):
 
     @transaction.atomic
     def put(self, request, id):
+        logger.debug('the PUT method of NetworkConnectionDetailView was activated')
 
         with self._handle_exception(request):
             nco = self._nco(request, id)
@@ -359,6 +379,7 @@ class NetworkConnectionDetailView(rfc.GenericView, NetworkMixin):
 
     @staticmethod
     def _delete_connection(nco):
+        logger.debug('the _delete method was called')
         for mnco in nco.networkconnection_set.all():
             network.delete_connection(mnco.uuid)
         network.delete_connection(nco.uuid)
@@ -366,23 +387,38 @@ class NetworkConnectionDetailView(rfc.GenericView, NetworkMixin):
 
     @transaction.atomic
     def delete(self, request, id):
+        logger.debug('the delete method was called')
         with self._handle_exception(request):
             nco = self._nco(request, id)
-            restricted = False
-            try:
-                so = Service.objects.get(name='rockstor')
-                config = json.loads(so.config)
-                if (config['network_interface'] == nco.name):
-                    restricted = True
-            except Exception as e:
-                logger.exception(e)
-            if (restricted):
-                e_msg = ('This connection ({}) is designated for '
-                         'management and cannot be deleted. If you really '
-                         'need to delete it, change the Rockstor service '
-                         'configuration and try again.').format(nco.name)
-                handle_exception(Exception(e_msg), request)
-            self._delete_connection(nco)
+            logger.debug('nco.id is {}, and nco.name is {}'.format(nco.id, nco.name))
+            if nco.bridgeconnection_set.first() > 0: # If docker network
+                brco = nco.bridgeconnection_set.first()
+                logger.debug('The connection is a Docker network: {}'.format(brco.docker_name))
+                logger.debug('Is it a user-defined Docker?: {}'.format(brco.usercon))
+                ## use docker tools to remove network
+                # check for running containers and disconnect them first
+                clist = probe_running_containers(network=brco.docker_name)
+                if len(clist) > 1:
+                    for c in clist[:-1]:
+                        logger.debug('Disconnect container {} from {}'.format(c, brco.docker_name))
+                        dnet_disconnect(c, brco.docker_name)
+                dnet_remove(network=brco.docker_name)
+            else:
+                restricted = False
+                try:
+                    so = Service.objects.get(name='rockstor')
+                    config = json.loads(so.config)
+                    if (config['network_interface'] == nco.name):
+                        restricted = True
+                except Exception as e:
+                    logger.exception(e)
+                if (restricted):
+                    e_msg = ('This connection ({}) is designated for '
+                             'management and cannot be deleted. If you really '
+                             'need to delete it, change the Rockstor service '
+                             'configuration and try again.').format(nco.name)
+                    handle_exception(Exception(e_msg), request)
+                self._delete_connection(nco)
             return Response()
 
     @transaction.atomic

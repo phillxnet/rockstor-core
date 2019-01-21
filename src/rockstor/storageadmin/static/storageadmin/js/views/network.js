@@ -133,6 +133,7 @@ NetworkView = Backbone.View.extend({
     },
 
     deleteConnection: function(event) {
+        console.log('Before confirmation, this =', this);
         if (confirm('Are you sure to delete the connection?')) {
             var _this = this;
             var button = $(event.currentTarget);

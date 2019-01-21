@@ -51,6 +51,7 @@ NetworkConnectionView = RockstorLayoutView.extend({
             });
             this.connection.fetch();
         }
+        console.log('At the end of render, this = ', this);
         return this;
     },
 
@@ -64,7 +65,7 @@ NetworkConnectionView = RockstorLayoutView.extend({
         $(this.el).append(this.template({
             connection: connection,
             devices: this.devices.toJSON(),
-            ctypes: ['ethernet', 'team', 'bond'],
+            ctypes: ['ethernet', 'team', 'bond', 'docker'],
             teamProfiles: ['broadcast', 'roundrobin', 'activebackup', 'loadbalance', 'lacp'],
             bondProfiles: ['balance-rr', 'active-backup', 'balance-xor', 'broadcast',
                 '802.3ad', 'balance-tlb', 'balance-alb'
@@ -123,6 +124,7 @@ NetworkConnectionView = RockstorLayoutView.extend({
                 if (!_this.connection) {
                     conn = new NetworkConnection();
                 }
+                console.log('data is = ', data);
                 conn.save(data, {
                     success: function(model, response, options) {
                         app_router.navigate('network', {
@@ -189,10 +191,17 @@ NetworkConnectionView = RockstorLayoutView.extend({
     // hide fields when selected method is auto
     renderMethodOptionalFields: function() {
         var selection = this.$('#method').val();
+        var ctype = this.$('#ctype').val();
         if (selection == 'auto') {
-            $('#methodOptionalFields').hide();
+            $('#methodOptionalFields, #methodOptionalFieldsDocker').hide();
         } else {
-            $('#methodOptionalFields').show();
+            if (ctype == 'docker') {
+                $('#methodOptionalFields').hide();
+                $('#methodOptionalFieldsDocker').show();
+            } else {
+                $('#methodOptionalFields').show();
+                $('#methodOptionalFieldsDocker').hide();
+            }
         }
     },
 
@@ -206,12 +215,14 @@ NetworkConnectionView = RockstorLayoutView.extend({
             $('#teamProfiles, #multiDevice').show();
             $('#bondProfiles, #singleDevice').hide();
         } else if (selection == 'ethernet') {
-            $('#teamProfiles, #multiDevice #bondProfiles').hide();
+            $('#teamProfiles, #multiDevice, #bondProfiles').hide();
             $('#singleDevice').show();
-        } else {
-            //bond
+        } else if (selection == 'bond') {
             $('#teamProfiles, #singleDevice').hide();
             $('#bondProfiles, #multiDevice').show();
+        } else if (selection == 'docker') {
+        //    show docker-specific config options
+            $('#teamProfiles, #singleDevice, #bondProfiles, #multiDevice').hide();
         }
     },
 
@@ -219,7 +230,8 @@ NetworkConnectionView = RockstorLayoutView.extend({
         var _this = this;
         Handlebars.registerHelper('selectedCtype', function(ctype) {
             var html = '';
-            if (ctype == _this.connection.get('ctype')) {
+            if ((ctype == _this.connection.get('ctype')) ||
+            ((ctype == 'docker') && (_this.connection.get('ctype') == 'bridge'))) {
                 html = 'selected="selected"';
             }
             return new Handlebars.SafeString(html);

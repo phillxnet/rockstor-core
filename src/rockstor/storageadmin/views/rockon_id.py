@@ -185,7 +185,7 @@ class RockOnIdView(rfc.GenericView):
                     DVolume.objects.filter(container=co, uservol=True).delete()
                     if DContainerLink.objects.filter(destination=co):
                         logger.debug('One of the rockon containers [{} ({})] has a link'.format(co, co.name))
-                        dnet_remove(co)
+                        dnet_remove(container=co)
             elif (command == 'update'):
                 self._pending_check(request)
                 if (rockon.state != 'installed'):
