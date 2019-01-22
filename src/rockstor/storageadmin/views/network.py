@@ -30,7 +30,7 @@ from storageadmin.serializers import (NetworkDeviceSerializer,
                                       NetworkConnectionSerializer)
 from storageadmin.views.rockon_helpers import (dnet_create, dnet_remove,
                                                probe_running_containers,
-                                               dnet_disconnect)
+                                               dnet_connect, dnet_disconnect)
 from system import network
 import rest_framework_custom as rfc
 
@@ -92,14 +92,19 @@ class NetworkMixin(object):
                 brco = BridgeConnection.objects.get(connection=co)
                 brco.docker_name = config['docker_name']
                 logger.debug('Views: docker_name is {} from db, {} from config'.format(brco.docker_name, config['docker_name']))
-                if (not DContainerLink.objects.filter(name=brco.docker_name)):
-                    logger.debug("{} is not in Container_Links".format(config['docker_name']))
-                    if ('docker0' not in config['docker_name']):
-                        logger.debug('{} is not docker0'.format(config['docker_name']))
-                        brco.usercon = True
+                if (not DContainerLink.objects.filter(name=brco.docker_name)) and (
+                    'docker0' not in brco.docker_name):
+                    logger.debug('{} is not docker0 and is not in Container_Links'.format(brco.docker_name))
+                    brco.usercon = True
                 brco.save()
             except BridgeConnection.DoesNotExist:
-                BridgeConnection.objects.create(connection=co, **config)
+                usercon = False
+                docker_name = config['docker_name']
+                if (not DContainerLink.objects.filter(name=docker_name)) and (
+                    'docker0' not in docker_name):
+                    logger.debug('{} is not docker0 and is not in Container_Links'.format(docker_name))
+                    usercon = True
+                BridgeConnection.objects.create(connection=co, usercon=usercon, **config)
 
         else:
             logger.error('Unknown ctype: {} config: {}'.format(ctype, config))
@@ -241,7 +246,8 @@ class NetworkConnectionListView(rfc.GenericView, NetworkMixin):
         with self._handle_exception(request):
             ipaddr = gateway = dns_servers = search_domains = \
             aux_address = dgateway = host_binding = icc = internal = \
-            ip_masquerade = ip_range = subnet = mtu = None
+            ip_masquerade = ip_range = subnet = None
+            mtu = DEFAULT_MTU
             name = request.data.get('name')
             if (NetworkConnection.objects.filter(name=name).exists()):
                 e_msg = ('Connection name ({}) is already in use. Choose a '
@@ -268,7 +274,7 @@ class NetworkConnectionListView(rfc.GenericView, NetworkMixin):
                 internal = request.data.get('internal')
                 ip_masquerade = request.data.get('gateway')
                 ip_range = request.data.get('ip_range', None)
-                mtu = request.data.get('mtu', None)
+                mtu = request.data.get('mtu', 1500)
                 subnet = request.data.get('subnet', None)
 
             # connection type can be one of ethernet, team or bond
@@ -311,7 +317,7 @@ class NetworkConnectionListView(rfc.GenericView, NetworkMixin):
 
             elif (ctype == 'docker'):
                 dnet_create(name, aux_address, dgateway, host_binding, icc,
-                            internal, ip_masquerade, ip_range, subnet, mtu)
+                            internal, ip_masquerade, ip_range, mtu, subnet)
 
             return Response()
 
@@ -351,13 +357,25 @@ class NetworkConnectionDetailView(rfc.GenericView, NetworkMixin):
                     handle_exception(Exception(e_msg), request)
             except ValueError:
                 handle_exception(Exception(e_msg), request)
-            ipaddr = gateway = dns_servers = search_domains = None
+            ipaddr = gateway = dns_servers = search_domains = \
+            aux_address = dgateway = host_binding = icc = internal = \
+            ip_masquerade = ip_range = subnet = None
             if (method == 'manual'):
                 ipaddr = request.data.get('ipaddr', None)
                 gateway = request.data.get('gateway', None)
                 dns_servers = request.data.get('dns_servers', None)
                 search_domains = request.data.get('search_domains', None)
+                aux_address = request.data.get('aux_address', None)
+                dgateway = request.data.get('dgateway', None)
+                host_binding = request.data.get('host_binding', None)
+                icc = request.data.get('icc')
+                internal = request.data.get('internal')
+                ip_masquerade = request.data.get('gateway')
+                ip_range = request.data.get('ip_range', None)
+                mtu = request.data.get('mtu', 1500)
+                subnet = request.data.get('subnet', None)
 
+            ctype = request.data.get('ctype')
             if (nco.ctype == 'ethernet'):
                 device = nco.networkdevice_set.first().name
                 self._delete_connection(nco)
@@ -374,6 +392,33 @@ class NetworkConnectionDetailView(rfc.GenericView, NetworkMixin):
                 network.new_team_connection(
                     nco.name, self.runners[team_profile], devices, ipaddr,
                     gateway, dns_servers, search_domains, mtu)
+            elif (ctype == 'docker'):
+                docker_name = request.data.get('docker_name')
+                dname = request.data.get('dname')
+                logger.debug('The connection is a Docker network named {}, to be renamed to {}'.format(docker_name, dname))
+                # Get list of connected containers to re-connect them later
+                clist = probe_running_containers(network=docker_name, all=True)[:-1]
+                logger.debug('clist is {}'.format(clist))
+
+                if (len(clist) > 0):
+                    logger.debug(
+                        'The Docker network named {} has {} containers, so disconnect them'.format(docker_name, len(clist)))
+                    for c in clist:
+                        logger.debug('Disconnect {} to the Docker network {}'.format(c, dname))
+                        dnet_disconnect(c, docker_name)
+
+                logger.debug('Remove the Docker network named {}'.format(docker_name))
+                dnet_remove(network=docker_name)
+                
+                logger.debug('Create the Docker network named {}'.format(dname))
+                dnet_create(dname, aux_address, dgateway, host_binding, icc,
+                            internal, ip_masquerade, ip_range, mtu, subnet)
+                if (len(clist) > 0):
+                    logger.debug(
+                        'The Docker network named {} had {} containers, so reconnect them'.format(docker_name, len(clist)))
+                    for c in clist:
+                        logger.debug('Connect {} to the Docker network {}'.format(c, dname))
+                        dnet_connect(c, dname, all=True)
 
             return Response(NetworkConnectionSerializer(nco).data)
 

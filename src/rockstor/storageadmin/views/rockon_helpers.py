@@ -240,16 +240,21 @@ def dnets(id=None, type=None):
     return o[:-1]
 
 
-def probe_running_containers(container=None, network=None):
+def probe_running_containers(container=None, network=None, all=False):
     cmd = [DOCKER, 'ps', '--format', '{{.Names}}', ]
     running_filters = ['--filter', 'status=created',
                        '--filter', 'status=restarting',
                        '--filter', 'status=running',
                        '--filter', 'status=paused', ]
+    if all:
+        cmd.extend((['-a', ]))
     if network:
-        cmd.extend((['--filter', 'network={}'.format(network),]))
+        cmd.extend((['--filter', 'network={}'.format(network), ]))
     elif container:
-        cmd.extend((running_filters + ['--filter', 'name={}'.format(container), ]))
+        if all:
+            cmd.extend((['-a', ]))
+        else:
+            cmd.extend((running_filters + ['--filter', 'name={}'.format(container), ]))
     else:
         cmd.extend((running_filters))
     o, e, rc = run_command(cmd)
@@ -261,8 +266,8 @@ def dnet_remove(container=None, network=None):
     This method uses the docker toolset to remove a user-define network.
     In Rockstor, these can be created either by a container_links object in a
     rock-on definition, or by the user. We thus need to account for both cases.
-    :param container:
-    :param network:
+    :param container: Dcontainer object
+    :param network: string of network name as seen by docker network ls
     :return:
     """
     if container:
@@ -293,16 +298,16 @@ def dnet_create(network, aux_address=None, dgateway=None, host_binding=None,
         if (aux_address is not None and len(aux_address.strip()) > 0):
             cmd.extend(['--aux-address="{}"'.format(aux_address.strip()), ])
         if (host_binding is not None and len(host_binding.strip()) > 0):
-            cmd.extend(['--opt', '"com.docker.network.bridge.host_binding_ipv4"="{}"'.format(host_binding), ])
+            cmd.extend(['--opt', 'com.docker.network.bridge.host_binding_ipv4={}'.format(host_binding), ])
         if (icc is True):
-            cmd.extend(['--opt', '"com.docker.network.bridge.enable_icc"="true"', ])
+            cmd.extend(['--opt', 'com.docker.network.bridge.enable_icc=true', ])
         if (internal is True):
             cmd.extend(['--internal', ])
         if (ip_masquerade is True):
-            cmd.extend(['--opt', '"com.docker.network.bridge.enable_ip_masquerade"="true"', ])
+            cmd.extend(['--opt', 'com.docker.network.bridge.enable_ip_masquerade=true', ])
         if (ip_range is not None and len(ip_range.strip()) > 0):
             cmd.extend(['--ip-range={}'.format(ip_range), ])
-        if (mtu is not None and len(mtu.strip()) > 0):
+        if (mtu != 1500):
             cmd.extend(['--opt', 'com.docker.network.driver.mtu={}'.format(mtu), ])
         cmd.extend([network, ])
         run_command(cmd, log=True)
@@ -311,16 +316,16 @@ def dnet_create(network, aux_address=None, dgateway=None, host_binding=None,
         logger.debug('the network {} was detected, so do NOT create it.'.format(network))
 
 
-def dnet_connect(container, network):
-    if (container in probe_running_containers(container=container)):
+def dnet_connect(container, network, all=False):
+    if (container in probe_running_containers(container=container, all=all)):
         logger.debug(
             'The container ({}) is not absent so connect it to the network {}'.format(
                 container, network))
-        if (container not in probe_running_containers(network=network)):
+        if (container not in probe_running_containers(network=network, all=all)):
             logger.debug(
                 'The container ({}) is not already connected to the network {}'.format(
                     container, network))
-            run_command(list(DNET) + ['connect', network, container, ])
+            run_command(list(DNET) + ['connect', network, container, ], log=True)
 
 
 def dnet_disconnect(container, network):

@@ -40,6 +40,7 @@ NetworkConnectionView = RockstorLayoutView.extend({
         this.template = window.JST.network_new_connection;
         this.devices = new NetworkDeviceCollection();
         this.devices.on('reset', this.renderDevices, this);
+        // this.template.trigger('request', this.renderMethodOptionalFields);
         this.initHandlebarHelpers();
     },
 
@@ -74,6 +75,7 @@ NetworkConnectionView = RockstorLayoutView.extend({
 
         if (this.connection) {
             this.renderCTypeOptionalFields();
+            this.renderMethodOptionalFields();
         }
 
         this.validator = this.$('#new-connection-form').validate({
@@ -121,6 +123,9 @@ NetworkConnectionView = RockstorLayoutView.extend({
                 disableButton(cancelButton);
                 var data = _this.$('#new-connection-form').getJSON();
                 var conn = _this.connection;
+                if (conn) {
+                var data = $.extend(data, {'docker_name':conn.get('docker_name')});
+                }
                 if (!_this.connection) {
                     conn = new NetworkConnection();
                 }
@@ -190,6 +195,7 @@ NetworkConnectionView = RockstorLayoutView.extend({
 
     // hide fields when selected method is auto
     renderMethodOptionalFields: function() {
+        console.log('start of renderMethodOptionalFields');
         var selection = this.$('#method').val();
         var ctype = this.$('#ctype').val();
         if (selection == 'auto') {
