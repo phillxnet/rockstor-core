@@ -83,7 +83,7 @@
                 <td>{{this.docker_name}}</td>
                 <td>{{this.ipv4_method}}</td>
                 <td>{{this.ipv4_addresses}}</td>
-                <td>{{this.ipv4_gw}}</td>
+                <td>{{#if this.ipv4_gw}}{{this.ipv4_gw}}{{else}}{{this.docker_options.dgateway}}{{/if}}</td>
                 <td>{{this.ipv4_dns}}</td>
                 <td>{{this.ipv4_dns_search}}</td>
                 <td>{{this.mtu}}</td>

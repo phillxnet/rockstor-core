@@ -138,6 +138,23 @@ class NetworkConnection(models.Model):
                 logger.debug('user_dnet is {}.'.format(user_dnet))
         return user_dnet
 
+    @property
+    def docker_options(self):
+        logger.debug('The property method docker_options has been triggered')
+        docker_options = {}
+        if self.bridgeconnection_set.count() > 0:
+            brco = self.bridgeconnection_set.first()
+            docker_options['aux_address'] = brco.aux_address
+            docker_options['dgateway'] = brco.dgateway
+            docker_options['host_binding'] = brco.host_binding
+            docker_options['icc'] = brco.icc
+            docker_options['internal'] = brco.internal
+            docker_options['ip_masquerade'] = brco.ip_masquerade
+            docker_options['ip_range'] = brco.ip_range
+            docker_options['subnet'] = brco.subnet
+        return docker_options
+
+
     # @property
     # def docker_net(self):
     #     dnet = None
@@ -220,6 +237,14 @@ class BridgeConnection(models.Model):
     connection = models.ForeignKey(NetworkConnection, null=True)
     docker_name = models.CharField(max_length=64, null=True)
     usercon = models.BooleanField(default=False)
+    aux_address = models.CharField(max_length=2048, null=True)
+    dgateway = models.CharField(max_length=64, null=True)
+    host_binding = models.CharField(max_length=64, null=True)
+    icc = models.BooleanField(default=False)
+    internal = models.BooleanField(default=False)
+    ip_masquerade = models.BooleanField(default=False)
+    ip_range = models.CharField(max_length=64, null=True)
+    subnet = models.CharField(max_length=64, null=True)
 
     class Meta:
         app_label = 'storageadmin'

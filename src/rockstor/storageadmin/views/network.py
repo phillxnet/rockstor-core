@@ -272,7 +272,7 @@ class NetworkConnectionListView(rfc.GenericView, NetworkMixin):
                 host_binding = request.data.get('host_binding', None)
                 icc = request.data.get('icc')
                 internal = request.data.get('internal')
-                ip_masquerade = request.data.get('gateway')
+                ip_masquerade = request.data.get('ip_masquerade')
                 ip_range = request.data.get('ip_range', None)
                 mtu = request.data.get('mtu', 1500)
                 subnet = request.data.get('subnet', None)
@@ -370,7 +370,7 @@ class NetworkConnectionDetailView(rfc.GenericView, NetworkMixin):
                 host_binding = request.data.get('host_binding', None)
                 icc = request.data.get('icc')
                 internal = request.data.get('internal')
-                ip_masquerade = request.data.get('gateway')
+                ip_masquerade = request.data.get('ip_masquerade')
                 ip_range = request.data.get('ip_range', None)
                 mtu = request.data.get('mtu', 1500)
                 subnet = request.data.get('subnet', None)
@@ -399,26 +399,98 @@ class NetworkConnectionDetailView(rfc.GenericView, NetworkMixin):
                 # Get list of connected containers to re-connect them later
                 clist = probe_running_containers(network=docker_name, all=True)[:-1]
                 logger.debug('clist is {}'.format(clist))
-
                 if (len(clist) > 0):
                     logger.debug(
-                        'The Docker network named {} has {} containers, so disconnect them'.format(docker_name, len(clist)))
+                        'The Docker network named {} had {} containers, so reconnect them'.format(docker_name,
+                                                                                                  len(clist)))
                     for c in clist:
                         logger.debug('Disconnect {} to the Docker network {}'.format(c, dname))
                         dnet_disconnect(c, docker_name)
-
+                # Remove docker network
                 logger.debug('Remove the Docker network named {}'.format(docker_name))
                 dnet_remove(network=docker_name)
-                
-                logger.debug('Create the Docker network named {}'.format(dname))
-                dnet_create(dname, aux_address, dgateway, host_binding, icc,
-                            internal, ip_masquerade, ip_range, mtu, subnet)
-                if (len(clist) > 0):
-                    logger.debug(
-                        'The Docker network named {} had {} containers, so reconnect them'.format(docker_name, len(clist)))
-                    for c in clist:
-                        logger.debug('Connect {} to the Docker network {}'.format(c, dname))
-                        dnet_connect(c, dname, all=True)
+
+                try:
+                    logger.debug('Create the Docker network named {}'.format(dname))
+                    dnet_create(dname, aux_address, dgateway, host_binding, icc,
+                                internal, ip_masquerade, ip_range, mtu, subnet)
+                    # Disconnect and reconnect all containers (if any)
+                    if (len(clist) > 0):
+                        logger.debug(
+                            'The Docker network named {} had {} containers, so reconnect them'.format(docker_name,
+                                                                                                      len(clist)))
+                        for c in clist:
+                            logger.debug('Connect {} to the Docker network {}'.format(c, dname))
+                            dnet_connect(c, dname, all=True)
+                except:
+                    # The creation of the new network has failed, so re-create the old one
+                    dconf = BridgeConnection.objects.filter(docker_name=docker_name).values()[0]
+                    aux_address = dconf['aux_address']
+                    dgateway = dconf['dgateway']
+                    host_binding = dconf['host_binding']
+                    icc = dconf['icc']
+                    internal = dconf['internal']
+                    ip_masquerade = dconf['ip_masquerade']
+                    ip_range = dconf['ip_range']
+                    subnet = dconf['subnet']
+                    dnet_create(docker_name, aux_address, dgateway, host_binding, icc,
+                                internal, ip_masquerade, ip_range, mtu, subnet)
+                    if (len(clist) > 0):
+                        logger.debug(
+                            'The Docker network named {} had {} containers, so reconnect them'.format(docker_name,
+                                                                                                      len(clist)))
+                        for c in clist:
+                            logger.debug('Connect {} to the Docker network {}'.format(c, dname))
+                            dnet_connect(c, docker_name, all=True)
+
+                # if (dname != docker_name): # No need to test for successful creation in this case
+                #     # Create new docker network
+                #     logger.debug('Create the Docker network named {}'.format(dname))
+                #     dnet_create(dname, aux_address, dgateway, host_binding, icc,
+                #                 internal, ip_masquerade, ip_range, mtu, subnet)
+                #     # Disconnect and reconnect all containers (if any)
+                #     if (len(clist) > 0):
+                #         logger.debug(
+                #             'The Docker network named {} had {} containers, so reconnect them'.format(docker_name,
+                #                                                                                       len(clist)))
+                #         for c in clist:
+                #             logger.debug('Connect {} to the Docker network {}'.format(c, dname))
+                #             dnet_connect(c, dname, all=True)
+                #             logger.debug('Disconnect {} to the Docker network {}'.format(c, dname))
+                #             dnet_disconnect(c, docker_name)
+                #     # Remove docker network
+                #     logger.debug('Remove the Docker network named {}'.format(docker_name))
+                #     dnet_remove(network=docker_name)
+                # elif (dname == docker_name):
+                #     # We need to test the settings for the creation of the new network first
+                #     # so let's create a test network first
+                #     dname_tmp = dname.strip() + '_tmp'
+                #     dnet_create(dname_tmp, aux_address, dgateway, host_binding, icc,
+                #                 internal, ip_masquerade, ip_range, mtu, subnet)
+                #     dnet_remove(network=dname_tmp)
+                #     # Disconnect any connected containers
+                #     if (len(clist) > 0):
+                #         logger.debug(
+                #             'The Docker network named {} has {} containers, so disconnect them'.format(docker_name,
+                #                                                                                        len(clist)))
+                #         for c in clist:
+                #             logger.debug('Disconnect {} to the Docker network {}'.format(c, dname))
+                #             dnet_disconnect(c, docker_name)
+                #     # Remove docker network
+                #     logger.debug('Remove the Docker network named {}'.format(docker_name))
+                #     dnet_remove(network=docker_name)
+                #     # Create new docker network
+                #     logger.debug('Create the Docker network named {}'.format(dname))
+                #     dnet_create(dname, aux_address, dgateway, host_binding, icc,
+                #                 internal, ip_masquerade, ip_range, mtu, subnet)
+                #     # Reconnect all containers (if any)
+                #     if (len(clist) > 0):
+                #         logger.debug(
+                #             'The Docker network named {} had {} containers, so reconnect them'.format(docker_name,
+                #                                                                                       len(clist)))
+                #         for c in clist:
+                #             logger.debug('Connect {} to the Docker network {}'.format(c, dname))
+                #             dnet_connect(c, dname, all=True)
 
             return Response(NetworkConnectionSerializer(nco).data)
 

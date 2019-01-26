@@ -57,6 +57,7 @@ NetworkConnectionView = RockstorLayoutView.extend({
     },
 
     renderDevices: function() {
+        console.log('renderDevices was triggered');
         var _this = this;
         $(this.el).empty();
         var connection;
@@ -191,6 +192,47 @@ NetworkConnectionView = RockstorLayoutView.extend({
             placement: 'right',
             title: 'Enter a value in [1500-9000] range. Defaults to 1500.'
         });
+        this.$('#aux_address').tooltip({
+            html: true,
+            placement: 'right',
+            title: 'Comma-separated list of auxiliary IPv4 addresses used by Network driver ("my-router=192.168.1.5"). This can prove useful to reserve IP addresses already attributed on the network.'
+        });
+        this.$('#dgateway').tooltip({
+            html: true,
+            placement: 'right',
+            title: 'IP address of your gateway.'
+        });
+        this.$('#ip_range').tooltip({
+            html: true,
+            placement: 'right',
+            title: 'Enter an IP range in CIDR notation (172.28.5.0/24).'
+        });
+        this.$('#subnet').tooltip({
+            html: true,
+            placement: 'right',
+            title: 'Enter a subnet value in CIDR notation (172.28.0.0/16).'
+        });
+        this.$('#host_binding').tooltip({
+            html: true,
+            placement: 'right',
+            title: 'Enter a default IP address when binding container ports (172.23.0.1).'
+        });
+        this.$('#internal').tooltip({
+            html: true,
+            placement: 'right',
+            title: 'Restrict external access to the network.'
+        });
+        this.$('#ip_masquerade').tooltip({
+            html: true,
+            placement: 'right',
+            title: 'Enable IP masquerading.'
+        });
+        this.$('#icc').tooltip({
+            html: true,
+            placement: 'right',
+            title: 'Enable or Disable Inter Container Connectivity.'
+        });
+
     },
 
     // hide fields when selected method is auto

@@ -188,6 +188,8 @@ class NetworkConnectionSerializer(serializers.ModelSerializer):
     docker_name = serializers.CharField()
     # docker_net = serializers.BooleanField()
     user_dnet = serializers.BooleanField()
+    docker_options = serializers.DictField()
+
 
     class Meta:
         model = NetworkConnection

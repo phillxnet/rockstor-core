@@ -22,7 +22,7 @@ import re
 
 from .exceptions import CommandException
 from .osi import run_command
-from storageadmin.views.rockon_helpers import dnets
+from storageadmin.views.rockon_helpers import (dnets, dnet_inspect)
 
 
 NMCLI = '/usr/bin/nmcli'
@@ -89,6 +89,13 @@ def connections():
             return None
         return s
 
+    def parse_aux_addresses(dtmap):
+        aux = dtmap['IPAM']['Config'][0]['AuxiliaryAddresses']
+        aux_list = []
+        for k, v in aux.items():
+            aux_list.append('{}={}'.format(k, v))
+        return flatten(aux_list)
+
     for uuid in o:
         if (len(uuid.strip()) == 0):
             continue
@@ -154,15 +161,42 @@ def connections():
                     }
                 elif (tmap['ctype'] == 'bridge'):
                     cid, _, _ = run_command([NMCLI, '-g', 'connection.id', 'c', 'show', uuid, ])
-                    if (cid[0].startswith('br-')):
+                    tmap[tmap['ctype']] = {
+                        'docker_name': None,
+                        'aux_address': None,
+                        'dgateway': None,
+                        'host_binding': None,
+                        'icc': False,
+                        'internal': False,
+                        'ip_masquerade': False,
+                        'ip_range': None,
+                        'subnet': None,
+                    }
+                    # Get docker_name
+                    if (cid[0].startswith('br-')): # custom-type docker network
                         logger.debug('dnets(cid[0][3:])[0] is = {}'.format(dnets(cid[0][3:])[0]))
-                        tmap[tmap['ctype']] = {
-                            'docker_name': dnets(cid[0][3:])[0],
-                    }
-                    else:
-                        tmap[tmap['ctype']] = {
-                            'docker_name': cid[0],
-                    }
+                        docker_name = dname = dnets(cid[0][3:])[0]
+                    else: # default docker0 bridge network
+                        docker_name = cid[0]
+                        logger.debug('dnets docker_name is = {}'.format(docker_name))
+                        dname = 'bridge'
+                    # Fill custom information, if any.
+                    dtmap = dnet_inspect(dname)
+                    tmap[tmap['ctype']]['docker_name'] = docker_name
+                    if (dtmap['IPAM']['Config'][0].get('AuxiliaryAddresses')):
+                        tmap[tmap['ctype']]['aux_address'] = parse_aux_addresses(dtmap)
+                        # tmap[tmap['ctype']]['aux_address'] = dtmap['IPAM']['Config'][0]['AuxiliaryAddresses']
+                    tmap[tmap['ctype']]['dgateway'] = dtmap['IPAM']['Config'][0]['Gateway']
+                    if (dtmap['Options'].get('com.docker.network.bridge.host_binding_ipv4')):
+                        tmap[tmap['ctype']]['host_binding'] = dtmap['Options']['com.docker.network.bridge.host_binding_ipv4']
+                    if (dtmap['Options'].get('com.docker.network.bridge.enable_icc')):
+                        tmap[tmap['ctype']]['icc'] = dtmap['Options']['com.docker.network.bridge.enable_icc']
+                    tmap[tmap['ctype']]['internal'] = dtmap['Internal']
+                    if (dtmap['Options'].get('com.docker.network.bridge.ip_masquerade')):
+                        tmap[tmap['ctype']]['ip_masquerade'] = dtmap['Options']['com.docker.network.bridge.ip_masquerade']
+                    if (dtmap['IPAM']['Config'][0].get('IPRange')):
+                        tmap[tmap['ctype']]['ip_range'] = dtmap['IPAM']['Config'][0]['IPRange']
+                    tmap[tmap['ctype']]['subnet'] = dtmap['IPAM']['Config'][0]['Subnet']
                 else:
                     tmap[tmap['ctype']] = {}
 
