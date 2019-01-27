@@ -24,8 +24,8 @@ from storageadmin.models import (Disk, Pool, Share, Snapshot, NFSExport,
                                  NFSExportGroup, SFTP, AdvancedNFSExport,
                                  OauthApp, NetatalkShare, Group, PoolBalance,
                                  SambaCustomConfig, TLSCertificate,
-                                 RockOn, DVolume, DPort, DCustomConfig,
-                                 DContainerEnv, DContainerDevice,
+                                 RockOn, DContainer, DVolume, DPort, DCustomConfig,
+                                 DContainerEnv, DContainerDevice, DContainerLabel,
                                  SMARTAttribute, SMARTCapability, SMARTInfo,
                                  SMARTErrorLog, SMARTErrorLogSummary,
                                  SMARTTestLog, SMARTTestLogDetail,
@@ -246,6 +246,11 @@ class RockOnSerializer(serializers.ModelSerializer):
         model = RockOn
 
 
+class RockOnContainerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DContainer
+
+
 class RockOnVolumeSerializer(serializers.ModelSerializer):
     share_name = serializers.CharField()
 
@@ -271,6 +276,11 @@ class RockOnEnvironmentSerializer(serializers.ModelSerializer):
 class RockOnDeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = DContainerDevice
+
+
+class RockOnLabelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DContainerLabel
 
 
 class SMARTCapabilitySerializer(serializers.ModelSerializer):
