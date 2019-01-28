@@ -885,7 +885,8 @@ RockonSettingsWizardView = WizardView.extend({
     events: {
         'click #next-page': 'nextPage',
         'click #prev-page': 'prevPage',
-        'click #add-label': 'addLabels'
+        'click #add-label': 'addLabels',
+        'click #custom-ports': 'editPorts'
     },
 
     initialize: function() {
@@ -999,6 +1000,15 @@ RockonSettingsWizardView = WizardView.extend({
         WizardView.prototype.render.apply(this, arguments);
         return this;
     },
+
+    editPorts: function() {
+        this.pages[1] = RockonEditPorts;
+        this.pages[2] = RockonSettingsSummary;
+        this.pages[3] = RockonSettingsComplete;
+        WizardView.prototype.render.apply(this, arguments);
+        return this;
+    },
+
 
     render: function() {
         this.fetchVolumes();
@@ -1141,6 +1151,129 @@ RockonAddLabel = RockstorWizardPage.extend({
         });
         this.containers.setPageSize(100);
         this.count = 1;
+        this.maxlabels = 10; // Define maximum numbers of labels
+        RockstorWizardPage.prototype.initialize.apply(this, arguments);
+        this.containers.on('reset', this.renderContainers, this);
+    },
+
+    events: {
+        'click #b1': 'addField',
+        'click .remove-me': 'removeField'
+    },
+
+    addField: function(event) {
+        event.preventDefault();
+        var count = this.count;
+        if (count < this.maxlabels) {
+            count++;
+            this.count = count;
+            var nbox = '<div id="label-box' + count +'" class="form-group">' +
+                '<label class="col-sm-3 control-label" for="labels">Label:  <span class="required">*</span></label>' +
+                '<div class="controls col-sm-5">' +
+                '<input class="form-control input-btn" name="labels[]" id="field' + count +'" placeholder="Enter another label" type="text" />' +
+                '<button id="remove_' + count + '" class="btn btn-danger remove-me">-</button>' +
+                '<button id="b1" class="btn" type="button">+</button>' +
+                '</div>' +
+                '<i class="fa fa-info-circle fa-lg" title="Enter the desired label in the following form: mycustomlabel"></i>' +
+                '</div>';
+            var newbox = $(nbox);
+            $('.label-box-new').append(newbox);
+        } else {
+            alert('Maximum number of labels reached.');
+        }
+    },
+
+    removeField: function(event) {
+        event.preventDefault();
+        var count = this.count;
+        $(event.currentTarget).parent('div').parent('div').remove();
+        count--;
+        this.count = count;
+        return this;
+    },
+
+    render: function() {
+        RockstorWizardPage.prototype.render.apply(this, arguments);
+        this.containers.fetch();
+        return this;
+    },
+
+    fetchContainers: function() {
+        var _this = this;
+        this.containers.fetch({
+            success: function() {
+                _this.model.set('containers', _this.containers);
+            }
+        });
+        return this;
+    },
+
+    renderContainers: function() {
+        this.containers_map = this.model.get('containers');
+        this.used_containers = [];
+        var _this = this;
+        for (var c in this.containers_map) {
+            this.used_containers.push(c);
+        }
+        this.filtered_containers = this.containers.filter(function(container) {
+            if (_this.used_containers.indexOf(container.get('name')) == -1) {
+                return container;
+            }
+        }, this);
+        this.$('#ph-add-labels-form').html(this.sub_template({
+            containers: this.filtered_containers.map(function(c) {
+                return c.toJSON();
+            })
+        }));
+        this.container_form = this.$('#container-select-form');
+        this.validator = this.container_form.validate({
+            rules: {
+                'container': 'required',
+                'labels[]': 'required'
+            },
+            messages: {
+                'container': 'Please select a container',
+                'labels[]': 'Please enter a label'
+            }
+        });
+        // Ensure previous page is correct
+        if (this.rockon.get('volume_add_support')) {
+            this.parent.pages[1] = RockonAddShare;
+        } else {
+        this.parent.pages[1] = RockonAddLabel;
+        }
+        return this;
+    },
+
+    save: function() {
+        if (!this.container_form.valid()) {
+            this.validator.showErrors();
+            return $.Deferred().reject();
+        }
+        var field_data = $('input[name^=labels]').map(function(idx, elem) {
+            return $(elem).val();
+        }).get();
+        var new_labels = {};
+        field_data.forEach(function(prop) {
+            new_labels[prop] = this.$('#container').val();
+        });
+        this.new_labels = new_labels;
+        this.model.set('new_labels', this.new_labels);
+        return $.Deferred().resolve();
+    }
+});
+
+RockonEditPorts = RockstorWizardPage.extend({
+    initialize: function() {
+        this.template = window.JST.rockons_add_labels;
+        this.sub_template = window.JST.rockons_add_labels_form;
+        this.rockon = this.model.get('rockon');
+        this.containers = new ContainerCollection(null, {
+            rid: this.rockon.id
+        });
+        this.containers.setPageSize(100);
+        this.count = 1;
+        console.log('This is the RockonPorts method, with this = ', this);
         this.maxlabels = 10; // Define maximum numbers of labels
         RockstorWizardPage.prototype.initialize.apply(this, arguments);
         this.containers.on('reset', this.renderContainers, this);
