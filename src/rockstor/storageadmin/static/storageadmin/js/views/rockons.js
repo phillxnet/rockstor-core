@@ -54,6 +54,7 @@ RockonsView = RockstorLayoutView.extend({
     render: function() {
         this.service.fetch();
         this.rockons.fetch();
+        console.log('Print this at render = ', this);
         this.updateStatus();
 
         return this;
@@ -309,6 +310,7 @@ RockonsView = RockstorLayoutView.extend({
         Handlebars.registerHelper('display_installedRockons', function() {
             var html = '';
             _this = this;
+            console.log('print this for ROCKON display', this);
             var installed = 0;
             this.rockons.each(function(rockon, index) {
                 if (rockon.get('state') == 'installed' || rockon.get('state').match('pending')) {
@@ -353,9 +355,13 @@ RockonsView = RockstorLayoutView.extend({
                         html += '<br><br>';
                         if (_this.ui_map[rockon.get('id')]) {
                             if (rockon.get('status') == 'started') {
+                                if (rockon.get('ui_publish')) {
                                 html += '<a href="' + _this.ui_map[rockon.get('id')] + '" target="_blank" class="btn btn-primary">' + rockon.get('name') + ' UI</a> ';
+                                } else {
+                                    html += '<span title="Disabled due to current ports settings. See rock-on settings."><a href="#" class="btn btn-primary disabled">' + rockon.get('name') + ' UI</a></span> ';
+                                }
                             } else {
-                                html += '<a href="#" class="btn btn-primary disabled" title="Switch on to access the UI">' + rockon.get('name') + ' UI</a> ';
+                                html += '<span title="Switch on to access the UI."><a href="#" class="btn btn-primary disabled">' + rockon.get('name') + ' UI</a></span> ';
                             }
                         }
                         if (rockon.get('status') != 'started') {
@@ -886,7 +892,7 @@ RockonSettingsWizardView = WizardView.extend({
         'click #next-page': 'nextPage',
         'click #prev-page': 'prevPage',
         'click #add-label': 'addLabels',
-        'click #custom-ports': 'editPorts'
+        'click #edit-ports': 'editPorts'
     },
 
     initialize: function() {
@@ -920,6 +926,8 @@ RockonSettingsWizardView = WizardView.extend({
         this.model.set('shares', this.shares);
         this.new_labels = {};
         this.model.set('new_labels', this.new_labels);
+        this.networks = new NetworkConnectionCollection();
+        this.model.set('networks', this.networks);
         this.evAgg.bind('addLabels', this.addLabels, this);
     },
 
@@ -1031,13 +1039,17 @@ RockonSettingsWizardView = WizardView.extend({
             parent: this,
             evAgg: this.evAgg
         });
+        console.log('this.currentPage is now = ', this.currentPageNum);
+        console.log('this.pages length is = ', this.pages.length);
     },
 
     modifyButtonText: function() {
+        console.log('modifyButtonText has been triggered');
         if (this.currentPageNum == 0) {
             this.$('#prev-page').hide();
             this.$('#add-label').html('Add Label');
             this.$('#add-label').css({'display': 'inline'});
+            this.$('#edit-ports').show();
             this.$('#next-page').html('Add Storage');
             if (!this.rockon.get('volume_add_support')) {
                 this.$('#next-page').hide();
@@ -1057,10 +1069,12 @@ RockonSettingsWizardView = WizardView.extend({
         } else if (this.currentPageNum == (this.pages.length - 1)) {
             this.$('#prev-page').show();
             this.$('#add-label').hide();
+            this.$('#edit-ports').hide();
             this.$('#next-page').html('Submit');
         } else {
             this.$('#prev-page').show();
             this.$('#add-label').hide();
+            this.$('#edit-ports').hide();
             this.$('#next-page').html('Next');
             this.$('#ph-wizard-buttons').show();
         }
@@ -1265,129 +1279,159 @@ RockonAddLabel = RockstorWizardPage.extend({
 
 RockonEditPorts = RockstorWizardPage.extend({
     initialize: function() {
-        this.template = window.JST.rockons_add_labels;
-        this.sub_template = window.JST.rockons_add_labels_form;
+        // this.template = window.JST.rockons_add_labels;
+        // this.sub_template = window.JST.rockons_add_labels_form;
+        this.template = window.JST.rockons_edit_ports;
+        this.sub_template = window.JST.rockons_edit_ports_form;
         this.rockon = this.model.get('rockon');
-        this.containers = new ContainerCollection(null, {
+        // this.containers = new ContainerCollection(null, {
+        //     rid: this.rockon.id
+        // });
+        this.ports = new RockOnPortCollection(null, {
             rid: this.rockon.id
-        });
-        this.containers.setPageSize(100);
-        this.count = 1;
-        console.log('This is the RockonPorts method, with this = ', this);
-        this.maxlabels = 10; // Define maximum numbers of labels
+        })
+        this.networks = new NetworkConnectionCollection();
+        this.networks.on('reset', this.renderPorts, this);
+        // this.containers.setPageSize(100);
+        console.log('This is the RockonEditPorts class, with this = ', this);
         RockstorWizardPage.prototype.initialize.apply(this, arguments);
-        this.containers.on('reset', this.renderContainers, this);
-    },
-
-    events: {
-        'click #b1': 'addField',
-        'click .remove-me': 'removeField'
-    },
-
-    addField: function(event) {
-        event.preventDefault();
-        var count = this.count;
-        if (count < this.maxlabels) {
-            count++;
-            this.count = count;
-            var nbox = '<div id="label-box' + count +'" class="form-group">' +
-                '<label class="col-sm-3 control-label" for="labels">Label:  <span class="required">*</span></label>' +
-                '<div class="controls col-sm-5">' +
-                '<input class="form-control input-btn" name="labels[]" id="field' + count +'" placeholder="Enter another label" type="text" />' +
-                '<button id="remove_' + count + '" class="btn btn-danger remove-me">-</button>' +
-                '<button id="b1" class="btn" type="button">+</button>' +
-                '</div>' +
-                '<i class="fa fa-info-circle fa-lg" title="Enter the desired label in the following form: mycustomlabel"></i>' +
-                '</div>';
-            var newbox = $(nbox);
-            $('.label-box-new').append(newbox);
-        } else {
-            alert('Maximum number of labels reached.');
-        }
-    },
-
-    removeField: function(event) {
-        event.preventDefault();
-        var count = this.count;
-        $(event.currentTarget).parent('div').parent('div').remove();
-        count--;
-        this.count = count;
-        return this;
+        this.ports.on('reset', this.renderPorts, this);
     },
 
     render: function() {
         RockstorWizardPage.prototype.render.apply(this, arguments);
-        this.containers.fetch();
+        this.ports.fetch();
+        this.networks.fetch();
         return this;
     },
 
-    fetchContainers: function() {
+    renderPorts: function() {
+        // this.containers_map = this.model.get('containers');
+        // this.used_containers = [];
+        // for (var c in this.containers_map) {
+        //     this.used_containers.push(c);
+        // }
+        // this.filtered_containers = this.containers.filter(function(container) {
+        //     if (_this.used_containers.indexOf(container.get('name')) == -1) {
+        //         return container;
+        //     }
+        // }, this);
+        // this.ports_map = this.model.get('ports');
+        // this.used_ports = [];
+        // // var _this = this;
+        // for (var p in this.ports_map) {
+        //     this.used_ports.push(p);
+        // }
+        // this.filtered_ports = this.ports.filter(function(port) {
+        //     if (_this.used_ports.indexOf(port.get('label')) == -1) {
+        //         return port;
+        //     }
+        // }, this);
+
         var _this = this;
-        this.containers.fetch({
-            success: function() {
-                _this.model.set('containers', _this.containers);
-            }
+        console.log('this.networks at renderPorts start = ', this.networks);
+        console.log('this.networks.length is = ', this.networks.length);
+
+        this.used_networks = [];
+        this.networks.each(function(network, index) {
+            _this.used_networks.push(network);
         });
-        return this;
-    },
-
-    renderContainers: function() {
-        this.containers_map = this.model.get('containers');
-        this.used_containers = [];
-        var _this = this;
-        for (var c in this.containers_map) {
-            this.used_containers.push(c);
+        console.log('this.used_networks = ', this.used_networks);
+        //
+        // this.filtered_networks = this.networks.filter(function(NetworkConnection) {
+        //     if (NetworkConnection.get('user_dnet') == 'true') {
+        //         return NetworkConnection;
+        //     }
+        // }, this);
+        // console.log('filtered_networks = ', this.filtered_networks);
+        // var user_dnets = this.networks.userDnet();
+        // user_dnets.fetch();
+        // console.log('user_dnets is = ', user_dnets);
+        this.user_dnets = [];
+        console.log('this.networks.length is = ', this.networks.length);
+        for (var i = 0; i < this.networks.length; i++) {
+            var n = this.networks.at(i);
+            if (n.get('user_dnet')) {
+            this.user_dnets.push(n.toJSON());
+            }
         }
-        this.filtered_containers = this.containers.filter(function(container) {
-            if (_this.used_containers.indexOf(container.get('name')) == -1) {
-                return container;
-            }
-        }, this);
-        this.$('#ph-add-labels-form').html(this.sub_template({
-            containers: this.filtered_containers.map(function(c) {
-                return c.toJSON();
-            })
+        console.log('this.user_dnets is = ', this.user_dnets);
+
+
+        // this.model.set('networks', this.networks);
+        console.log('this.networks is = ', this.networks);
+        console.log('this.networks.toJSON() is = ', this.networks.toJSON());
+
+        this.$('#ph-edit-ports-form').html(this.sub_template({
+            // containers: this.filtered_containers.map(function(c) {
+            //     return c.toJSON();
+            // }),
+            ports: this.model.get('ports').toJSON(),
+            user_dnets: this.user_dnets
+            // networks: this.model.get('networks').toJSON()
+            // networks: this.networks.toJSON(),
+            // networks: this.networks.map(function(n) {
+            //     return n.toJSON();
+            // })
         }));
-        this.container_form = this.$('#container-select-form');
-        this.validator = this.container_form.validate({
-            rules: {
-                'container': 'required',
-                'labels[]': 'required'
-            },
-            messages: {
-                'container': 'Please select a container',
-                'labels[]': 'Please enter a label'
-            }
-        });
+
+
+        console.log('This during renderPorts', this);
+        // this.ports_form = this.$('#container-select-form');
+        // this.validator = this.container_form.validate({
+        //     rules: {
+        //         'container': 'required',
+        //         'labels[]': 'required'
+        //     },
+        //     messages: {
+        //         'container': 'Please select a container',
+        //         'labels[]': 'Please enter a label'
+        //     }
+        // });
+
         // Ensure previous page is correct
         if (this.rockon.get('volume_add_support')) {
-            this.parent.pages[1] = RockonAddShare;
+            this.parent.pages[1] = RockonEditPorts;
         } else {
-        this.parent.pages[1] = RockonAddLabel;
+        this.parent.pages[1] = RockonEditPorts;
         }
         return this;
     },
 
     save: function() {
-        if (!this.container_form.valid()) {
-            this.validator.showErrors();
-            return $.Deferred().reject();
-        }
-        var field_data = $('input[name^=labels]').map(function(idx, elem) {
-            return $(elem).val();
+        // if (!this.container_form.valid()) {
+        //     this.validator.showErrors();
+        //     return $.Deferred().reject();
+        // }
+        // var field_data = $('input[name^=publish]').map(function(idx, elem) {
+        //     return $(elem).attr('checked');
+        // }).get();
+        var edit_ports ={};
+        $('input[name^=publish]').map(function(idx, elem) {
+            var pstatus = 'unchecked';
+            if ($(elem).attr('checked') == 'checked') {
+                pstatus = 'checked'
+            }
+            return edit_ports[$(elem).attr('id')] = pstatus;
+            // return edit_ports[$(elem).attr('id')] = $(elem).attr('checked');
         }).get();
-        var new_labels = {};
-        field_data.forEach(function(prop) {
-            new_labels[prop] = this.$('#container').val();
-        });
-        this.new_labels = new_labels;
-        this.model.set('new_labels', this.new_labels);
+        // var edit_ports = {};
+        // field_data.forEach(function(port) {
+        //     edit_ports[port] = this.$('input').attr('id');
+        // });
+        // console.log('edit_ports is = ', edit_ports);
+        // console.log('field_data is = ', field_data);
+        console.log('edit_ports is = ', edit_ports);
+        this.edit_ports = edit_ports;
+        this.model.set('edit_ports', this.edit_ports);
+        console.log('Print this = ', this);
         return $.Deferred().resolve();
     }
 });
 
 RockonInfoSummary = RockstorWizardPage.extend({
     initialize: function() {
+        console.log('This is RockonInfoSummary');
         this.template = window.JST.rockons_settings_summary;
         this.sub_template = window.JST.rockons_more_info;
         this.rockon = this.model.get('rockon');
@@ -1405,6 +1449,7 @@ RockonInfoSummary = RockstorWizardPage.extend({
 
 RockonSettingsSummary = RockstorWizardPage.extend({
     initialize: function() {
+        console.log('this is RockonSettingsSummary');
         this.template = window.JST.rockons_settings_summary;
         this.sub_template = window.JST.rockons_settings_summary_table;
         this.rockon = this.model.get('rockon');
@@ -1466,15 +1511,36 @@ RockonSettingsSummary = RockstorWizardPage.extend({
             }
             return new Handlebars.SafeString(html);
         });
+        var _this = this;
+        Handlebars.registerHelper('isPublished', function(port, state, edit_ports) {
+            var html = '';
+            if (_this.model.get('edit_ports')){
+                var edit_ports = _this.model.get('edit_ports');
+                if (edit_ports[port] == 'unchecked') {
+                    html += ' (Unpublished)';
+                }
+            } else {
+                if(state != true) {
+                    html += ' (Unpublished)';
+                }
+            }
+            return new Handlebars.SafeString(html);
+        });
     }
 });
 
 RockonSettingsComplete = RockstorWizardPage.extend({
     initialize: function() {
+        console.log('This is RockonSettingsComplete');
         this.template = window.JST.rockons_update_complete;
         this.rockon = this.model.get('rockon');
         this.shares = this.model.get('shares');
         this.new_labels = this.model.get('new_labels');
+        this.edit_ports = this.model.get('edit_ports');
+        console.log('this.edits_portJSON = ', JSON.stringify({
+            'labels': this.new_labels,
+            'edit_ports': this.edit_ports
+        }));
         RockstorWizardPage.prototype.initialize.apply(this, arguments);
     },
 
@@ -1489,6 +1555,12 @@ RockonSettingsComplete = RockstorWizardPage.extend({
         var _this = this;
         if (document.getElementById('next-page').disabled) return false;
         document.getElementById('next-page').disabled = true;
+
+        console.log('this.edits_portJSON = ', JSON.stringify({
+            'labels': this.new_labels,
+            'edit_ports': this.edit_ports
+        }));
+
         return $.ajax({
             url: '/api/rockons/' + this.rockon.id + '/update',
             type: 'POST',
@@ -1496,9 +1568,14 @@ RockonSettingsComplete = RockstorWizardPage.extend({
             contentType: 'application/json',
             data: JSON.stringify({
                 'shares': this.shares,
-                'labels': this.new_labels
+                'labels': this.new_labels,
+                'edit_ports': this.edit_ports
             }),
-            success: function() {}
+            success: function() {
+                console.log(JSON.stringify({
+                    'edit_ports': this.edit_ports
+                }));
+            }
         });
     }
 });

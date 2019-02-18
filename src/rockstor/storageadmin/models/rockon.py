@@ -44,6 +44,16 @@ class RockOn(models.Model):
                     return po.hostp
         return None
 
+    @property
+    def ui_publish(self):
+        if (not self.ui):
+            return None
+        for co in self.dcontainer_set.all():
+            for po in co.dport_set.all():
+                if (po.uiport and po.publish):
+                    return True
+        return None
+
     class Meta:
         app_label = 'storageadmin'
 

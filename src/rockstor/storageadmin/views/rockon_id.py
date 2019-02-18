@@ -187,6 +187,11 @@ class RockOnIdView(rfc.GenericView):
                     if DContainerLink.objects.filter(destination=co):
                         logger.debug('One of the rockon containers [{} ({})] has a link'.format(co, co.name))
                         dnet_remove(container=co)
+                    # Reset all ports to a published state (if any)
+                    for po in DPort.objects.filter(container=co):
+                        logger.debug('The port {} ({}) of container {} will be reset'.format(po.id, po.description, po.container_id))
+                        po.publish = True
+                        po.save()
             elif (command == 'update'):
                 self._pending_check(request)
                 if (rockon.state != 'installed'):
@@ -201,6 +206,7 @@ class RockOnIdView(rfc.GenericView):
                     handle_exception(Exception(e_msg), request)
                 share_map = request.data.get('shares')
                 label_map = request.data.get('labels')
+                ports_publish = request.data.get('edit_ports')
                 if bool(share_map):
                     for co in DContainer.objects.filter(rockon=rockon):
                         for s in share_map.keys():
@@ -236,6 +242,17 @@ class RockOnIdView(rfc.GenericView):
                                 continue
                             lo = DContainerLabel(container=co, key=cname, val=c)
                             lo.save()
+                if bool(ports_publish):
+                    for p in ports_publish.keys():
+                        logger.debug('Deal with port number: {}'.format(p))
+                        po = DPort.objects.get(id=p)
+                        pub = ports_publish[p]
+                        logger.debug('pub is = {}'.format(pub))
+                        logger.debug('Edit port {} ({}) with the following status: {}'.format(po.id, po.description, pub))
+                        po.publish = True
+                        if (pub == 'unchecked'):
+                            po.publish = False
+                        po.save()
                 rockon.state = 'pending_update'
                 rockon.save()
                 update.async(rockon.id)
