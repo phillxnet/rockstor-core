@@ -1284,28 +1284,65 @@ RockonEditPorts = RockstorWizardPage.extend({
         this.template = window.JST.rockons_edit_ports;
         this.sub_template = window.JST.rockons_edit_ports_form;
         this.rockon = this.model.get('rockon');
-        // this.containers = new ContainerCollection(null, {
-        //     rid: this.rockon.id
-        // });
         this.ports = new RockOnPortCollection(null, {
             rid: this.rockon.id
         })
         this.networks = new NetworkConnectionCollection();
-        this.networks.on('reset', this.renderPorts, this);
+        // this.networks.on('reset', this.renderPorts, this);
+        this.containers = new ContainerCollection(null, {
+            rid: this.rockon.id
+        });
         // this.containers.setPageSize(100);
         console.log('This is the RockonEditPorts class, with this = ', this);
         RockstorWizardPage.prototype.initialize.apply(this, arguments);
-        this.ports.on('reset', this.renderPorts, this);
+        // this.ports.on('reset', this.renderPorts, this);
     },
 
     render: function() {
+        console.log('start render');
         RockstorWizardPage.prototype.render.apply(this, arguments);
-        this.ports.fetch();
-        this.networks.fetch();
+        this.fetchPorts();
+        // this.ports.fetch();
+        // this.containers.fetch();
+        // this.networks.fetch();
         return this;
     },
 
+    fetchPorts: function() {
+        console.log('start fetchPorts');
+        var _this = this;
+        this.ports.fetch({
+            success: function() {
+                _this.model.set('ports', _this.ports);
+                _this.fetchContainers();
+            }
+        });
+    },
+
+    fetchContainers: function() {
+        console.log('start fetchContainers');
+        var _this = this;
+        this.containers.fetch({
+            success: function() {
+                _this.model.set('containers', _this.containers);
+                _this.fetchNetworks();
+            }
+        });
+    },
+
+    fetchNetworks: function() {
+        console.log('start fetchNetworks');
+        var _this = this;
+        this.networks.fetch({
+            success: function() {
+                _this.model.set('networks', _this.networks);
+                _this.renderPorts();
+            }
+        });
+    },
+
     renderPorts: function() {
+        console.log('start renderPorts');
         // this.containers_map = this.model.get('containers');
         // this.used_containers = [];
         // for (var c in this.containers_map) {
@@ -1329,14 +1366,18 @@ RockonEditPorts = RockstorWizardPage.extend({
         // }, this);
 
         var _this = this;
-        console.log('this.networks at renderPorts start = ', this.networks);
-        console.log('this.networks.length is = ', this.networks.length);
+        console.log('this.networks at renderPorts start = ', this.model.get('networks'));
+        console.log('this.networks.length is = ', this.model.get('networks').length);
 
-        this.used_networks = [];
-        this.networks.each(function(network, index) {
-            _this.used_networks.push(network);
-        });
-        console.log('this.used_networks = ', this.used_networks);
+        console.log('this.containers is = ', this.model.get('containers'));
+        console.log('this.containers.length is = ', this.model.get('containers').length);
+
+        // this.used_networks = [];
+        // this.networks.each(function(network, index) {
+        //     _this.used_networks.push(network);
+        // });
+        // console.log('this.used_networks = ', this.used_networks);
+
         //
         // this.filtered_networks = this.networks.filter(function(NetworkConnection) {
         //     if (NetworkConnection.get('user_dnet') == 'true') {
@@ -1348,7 +1389,6 @@ RockonEditPorts = RockstorWizardPage.extend({
         // user_dnets.fetch();
         // console.log('user_dnets is = ', user_dnets);
         this.user_dnets = [];
-        console.log('this.networks.length is = ', this.networks.length);
         for (var i = 0; i < this.networks.length; i++) {
             var n = this.networks.at(i);
             if (n.get('user_dnet')) {
@@ -1359,21 +1399,35 @@ RockonEditPorts = RockstorWizardPage.extend({
 
 
         // this.model.set('networks', this.networks);
-        console.log('this.networks is = ', this.networks);
-        console.log('this.networks.toJSON() is = ', this.networks.toJSON());
+        // console.log('this.networks is = ', this.networks);
+        // console.log('this.networks.toJSON() is = ', this.networks.toJSON());
 
         this.$('#ph-edit-ports-form').html(this.sub_template({
             // containers: this.filtered_containers.map(function(c) {
             //     return c.toJSON();
             // }),
             ports: this.model.get('ports').toJSON(),
-            user_dnets: this.user_dnets
+            user_dnets: this.user_dnets,
             // networks: this.model.get('networks').toJSON()
             // networks: this.networks.toJSON(),
             // networks: this.networks.map(function(n) {
             //     return n.toJSON();
             // })
+            containers: this.containers.map(function(c) {
+                return c.toJSON();
+            })
         }));
+
+        // this.$('#networks').select2({
+        //     dropdownParent: $('#install-rockon-overlay'),
+        //     width: '80%'
+        // });
+        this.$('.form-control').each(function(index, element) {
+            $(this).select2({
+                dropdownParent: $('#install-rockon-overlay'),
+                width: '80%'
+            });
+        });
 
 
         console.log('This during renderPorts', this);
@@ -1424,6 +1478,21 @@ RockonEditPorts = RockstorWizardPage.extend({
         console.log('edit_ports is = ', edit_ports);
         this.edit_ports = edit_ports;
         this.model.set('edit_ports', this.edit_ports);
+
+        // Join-networks data
+        var _this = this;
+        var net_data2 = _this.$('#join-networks').getJSON();
+        console.log('net_data2 is = ', net_data2);
+        var net_data3 = _this.$('#join-networks').serializeArray();
+        console.log('net_data3 is = ', net_data3);
+        var field_data = $(".form-control").val();
+        console.log('field_data is = ', field_data);
+        var net_data = {};
+        field_data.forEach(function(prop) {
+            net_data[prop] = $('input[name^=networks]').parent('div').attr('id');
+        })
+        console.log('net_data is = ', net_data);
+
         console.log('Print this = ', this);
         return $.Deferred().resolve();
     }
