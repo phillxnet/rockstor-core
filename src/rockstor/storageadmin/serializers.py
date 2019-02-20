@@ -260,6 +260,8 @@ class RockOnVolumeSerializer(serializers.ModelSerializer):
 
 
 class RockOnPortSerializer(serializers.ModelSerializer):
+    container_name = serializers.CharField()
+
     class Meta:
         model = DPort
 

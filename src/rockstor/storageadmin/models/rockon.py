@@ -101,6 +101,14 @@ class DPort(models.Model):
     protocol = models.CharField(max_length=32, null=True)
     uiport = models.BooleanField(default=False)
     label = models.CharField(max_length=1024, null=True)
+    publish = models.BooleanField(default=True)
+
+    @property
+    def container_name(self):
+        if (self.container is not None):
+            return self.container.name
+        return None
+
 
     class Meta:
         unique_together = ('container', 'containerp',)

@@ -19,7 +19,8 @@
     <tr>
         <td>Port</td>
         <td>{{this.hostp}}</td>
-        <td>{{this.containerp}}</td>
+        <td>{{this.containerp}}{{isPublished this.id this.publish}}</td>
+        <!--<td>{{this.containerp}}{{isPublished this.id}}</td>-->
     </tr>
 {{/each}}
 {{#each cc}}
