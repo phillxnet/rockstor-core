@@ -26,6 +26,7 @@ from storageadmin.models import (Disk, Pool, Share, Snapshot, NFSExport,
                                  SambaCustomConfig, TLSCertificate,
                                  RockOn, DContainer, DVolume, DPort, DCustomConfig,
                                  DContainerEnv, DContainerDevice, DContainerLabel,
+                                 DContainerNetwork,
                                  SMARTAttribute, SMARTCapability, SMARTInfo,
                                  SMARTErrorLog, SMARTErrorLogSummary,
                                  SMARTTestLog, SMARTTestLogDetail,
@@ -284,6 +285,11 @@ class RockOnDeviceSerializer(serializers.ModelSerializer):
 class RockOnLabelSerializer(serializers.ModelSerializer):
     class Meta:
         model = DContainerLabel
+
+
+class RockOnNetworkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DContainerNetwork
 
 
 class SMARTCapabilitySerializer(serializers.ModelSerializer):

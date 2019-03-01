@@ -1265,12 +1265,16 @@ RockonAddLabel = RockstorWizardPage.extend({
             return $.Deferred().reject();
         }
         var field_data = $('input[name^=labels]').map(function(idx, elem) {
-            return $(elem).val();
+            if ($(elem).val() != "") {
+                return $(elem).val();
+            }
         }).get();
         var new_labels = {};
-        field_data.forEach(function(prop) {
+        console.log('field_data is = ', field_data);
+        field_data.forEach(function (prop) {
             new_labels[prop] = this.$('#container').val();
         });
+        console.log('new_labels is = ', new_labels);
         this.new_labels = new_labels;
         this.model.set('new_labels', this.new_labels);
         return $.Deferred().resolve();
@@ -1468,19 +1472,13 @@ RockonEditPorts = RockstorWizardPage.extend({
                 pstatus = 'checked'
             }
             return edit_ports[$(elem).attr('id')] = pstatus;
-            // return edit_ports[$(elem).attr('id')] = $(elem).attr('checked');
         }).get();
-        // var edit_ports = {};
-        // field_data.forEach(function(port) {
-        //     edit_ports[port] = this.$('input').attr('id');
-        // });
-        // console.log('edit_ports is = ', edit_ports);
-        // console.log('field_data is = ', field_data);
+
         console.log('edit_ports is = ', edit_ports);
         this.edit_ports = edit_ports;
         this.model.set('edit_ports', this.edit_ports);
 
-        // Join-networks data
+        // Get join-networks data
         var _this = this;
         var net_data2 = _this.$('#join-networks').getJSON();
         console.log('net_data2 is = ', net_data2);
@@ -1488,11 +1486,18 @@ RockonEditPorts = RockstorWizardPage.extend({
         console.log('net_data3 is = ', net_data3);
         var field_data = $(".form-control").val();
         console.log('field_data is = ', field_data);
-        var net_data = {};
-        field_data.forEach(function(prop) {
-            net_data[prop] = $('input[name^=networks]').parent('div').attr('id');
-        })
-        console.log('net_data is = ', net_data);
+        var s2_data = $(".form-control").select2('data');
+        console.log('s2_data is = ', s2_data);
+
+        var cnets2 = {};
+        for (var i = 0; i < net_data3.length; i++){
+            cnets2[net_data3[i]['value']] = net_data3[i]['name'];
+            };
+        console.log('cnets2 is = ', cnets2);
+
+
+        this.new_cnets = net_data2;
+        this.model.set('new_cnets', this.new_cnets);
 
         console.log('Print this = ', this);
         return $.Deferred().resolve();
@@ -1529,6 +1534,7 @@ RockonSettingsSummary = RockstorWizardPage.extend({
 
     render: function() {
         RockstorWizardPage.prototype.render.apply(this, arguments);
+        console.log('Print THIS at RockonSettingsSummary render: ', this);
         this.$('#ph-settings-summary-table').html(this.sub_template({
             model: this.model,
             volumes: this.model.get('volumes').toJSON(),
@@ -1539,6 +1545,8 @@ RockonSettingsSummary = RockstorWizardPage.extend({
             env: this.model.get('environment').toJSON(),
             labels: this.model.get('labels').toJSON(),
             new_labels: this.model.get('new_labels'),
+            // cnets: this.model.get('cnets'),
+            new_cnets: this.model.get('new_cnets'),
             rockon: this.model.get('rockon')
         }));
         // Ensure previous page is correct
@@ -1581,8 +1589,21 @@ RockonSettingsSummary = RockstorWizardPage.extend({
             }
             return new Handlebars.SafeString(html);
         });
+        Handlebars.registerHelper('display_newCnets', function() {
+            // Display newly-defined networks and their corresponding container
+            // for confimation before submit in settings_summary_table.jst
+            var html = '';
+            for (new_cnet in this.new_cnets) {
+                html += '<tr>';
+                html += '<td>Network</td>';
+                html += '<td>' + new_cnet + '</td>';
+                html += '<td>' + this.new_cnets[new_cnet] + '</td>';
+                html += '</tr>';
+            }
+            return new Handlebars.SafeString(html);
+        });
         var _this = this;
-        Handlebars.registerHelper('isPublished', function(port, state, edit_ports) {
+        Handlebars.registerHelper('isPublished', function(port, state) {
             var html = '';
             if (_this.model.get('edit_ports')){
                 var edit_ports = _this.model.get('edit_ports');
@@ -1607,9 +1628,11 @@ RockonSettingsComplete = RockstorWizardPage.extend({
         this.shares = this.model.get('shares');
         this.new_labels = this.model.get('new_labels');
         this.edit_ports = this.model.get('edit_ports');
+        this.new_cnets = this.model.get('new_cnets');
         console.log('this.edits_portJSON = ', JSON.stringify({
             'labels': this.new_labels,
-            'edit_ports': this.edit_ports
+            'edit_ports': this.edit_ports,
+            'new_cnets': this.new_cnets
         }));
         RockstorWizardPage.prototype.initialize.apply(this, arguments);
     },
@@ -1626,9 +1649,10 @@ RockonSettingsComplete = RockstorWizardPage.extend({
         if (document.getElementById('next-page').disabled) return false;
         document.getElementById('next-page').disabled = true;
 
-        console.log('this.edits_portJSON = ', JSON.stringify({
+        console.log('data sent is = ', JSON.stringify({
             'labels': this.new_labels,
-            'edit_ports': this.edit_ports
+            'edit_ports': this.edit_ports,
+            'new_cnets': this.new_cnets
         }));
 
         return $.ajax({
@@ -1639,11 +1663,13 @@ RockonSettingsComplete = RockstorWizardPage.extend({
             data: JSON.stringify({
                 'shares': this.shares,
                 'labels': this.new_labels,
-                'edit_ports': this.edit_ports
+                'edit_ports': this.edit_ports,
+                'cnets': this.new_cnets
             }),
             success: function() {
                 console.log(JSON.stringify({
-                    'edit_ports': this.edit_ports
+                    'edit_ports': this.edit_ports,
+                    'cnets': this.new_cnets
                 }));
             }
         });

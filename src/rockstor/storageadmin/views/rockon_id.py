@@ -21,12 +21,13 @@ from rest_framework.response import Response
 from django.db import transaction
 from storageadmin.models import (RockOn, DContainer, DVolume, DContainerDevice,
                                  Share, DPort, DCustomConfig, DContainerEnv,
-                                 DContainerLink, DContainerLabel)
+                                 DContainerLink, DContainerLabel, DContainerNetwork,
+                                 BridgeConnection)
 from storageadmin.serializers import RockOnSerializer
 import rest_framework_custom as rfc
 from storageadmin.util import handle_exception
 from rockon_helpers import (docker_status, start, stop, install, uninstall,
-                            update, dnet_remove)
+                            update, dnet_remove, dnet_create)
 from system.services import superctl
 
 import logging
@@ -207,6 +208,8 @@ class RockOnIdView(rfc.GenericView):
                 share_map = request.data.get('shares')
                 label_map = request.data.get('labels')
                 ports_publish = request.data.get('edit_ports')
+                cnets_map = request.data.get('cnets')
+                live = False
                 if bool(share_map):
                     for co in DContainer.objects.filter(rockon=rockon):
                         for s in share_map.keys():
@@ -253,9 +256,36 @@ class RockOnIdView(rfc.GenericView):
                         if (pub == 'unchecked'):
                             po.publish = False
                         po.save()
+                if bool('cnets_map'):
+                    # Update rock-ons nets. We have the following scenarios:
+                    # A: Need to change cnets, but not ports
+                    # B: Need to change ports, but not cnets
+                    # C: Need to change cnets AND ports
+                    # @todo: check for changes in requested publish status and for condition A above
+                    #   if A, simply connect container to network without uninstall-reinstall routine
+                    #   use special option in async.update(rockon) call below?
+
+                    # Base update prcedure
+                    logger.debug('Normal update procedure for rocknets')
+                    for c in cnets_map:
+                        for net in cnets_map[c]:
+                            # logger.debug('The cnet is {}'.format(net))
+                            logger.debug('The container is {}, and the net is {}'.format(c,net))
+                            co = DContainer.objects.get(rockon=rockon, name=c)
+                            if (not BridgeConnection.objects.filter(docker_name=net).exists()):
+                                logger.debug('the network {} does not exist.'.format(net))
+                                dnet_create(network=net, update=True)
+                            brco = BridgeConnection.objects.get(docker_name=net)
+                            logger.debug('co is {}, with id {} and name {}'.format(co, co.id, co.name))
+                            logger.debug('brco is {}, with docker_name {}'.format(brco, brco.docker_name))
+                            cno = DContainerNetwork(container=co, connection=brco)
+                            cno.save()
+                    if (not bool(ports_publish)): # case A above
+                        live = True # no need to uninstall-reinstall rock-on
                 rockon.state = 'pending_update'
                 rockon.save()
                 update.async(rockon.id)
+                # update.async(rockon.id, live=live)
             elif (command == 'stop'):
                 stop.async(rockon.id)
                 rockon.status = 'pending_stop'

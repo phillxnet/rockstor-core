@@ -17,7 +17,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
 from django.db import models
-from storageadmin.models import Share
+from storageadmin.models import (Share, BridgeConnection)
 
 
 class RockOn(models.Model):
@@ -89,6 +89,15 @@ class DContainerLink(models.Model):
 
     class Meta:
         unique_together = ('source', 'destination', 'name')
+        app_label = 'storageadmin'
+
+
+class DContainerNetwork(models.Model):
+    container = models.ForeignKey(DContainer)
+    connection = models.ForeignKey(BridgeConnection)
+
+    class Meta:
+        unique_together = ('container', 'connection')
         app_label = 'storageadmin'
 
 

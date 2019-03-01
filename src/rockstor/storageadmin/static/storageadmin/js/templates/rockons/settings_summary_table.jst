@@ -23,6 +23,14 @@
         <!--<td>{{this.containerp}}{{isPublished this.id}}</td>-->
     </tr>
 {{/each}}
+{{#each cnets}}
+    <tr>
+        <td>Network</td>
+        <td>{{this.key}}</td>
+        <td>{{this.val}}</td>
+    </tr>
+{{/each}}
+{{display_newCnets}}
 {{#each cc}}
     <tr>
         <td>Custom</td>
