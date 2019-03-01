@@ -30,7 +30,6 @@ from storageadmin.models import (RockOn, DContainer, DVolume, DPort,
                                  DContainerLabel, DContainerNetwork)
 from fs.btrfs import mount_share
 from rockon_utils import container_status
-from network import NetworkMixin
 import logging
 import json
 
