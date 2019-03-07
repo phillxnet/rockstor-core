@@ -21,7 +21,8 @@ from storageadmin.views import (RockOnView, RockOnIdView,
                                 RockOnVolumeView,
                                 RockOnPortView, RockOnCustomConfigView,
                                 RockOnEnvironmentView, RockOnDeviceView,
-                                RockOnContainerView, RockOnLabelView)
+                                RockOnContainerView, RockOnLabelView,
+                                RockOnNetworkView)
 
 urlpatterns = patterns(
     '',
@@ -33,6 +34,7 @@ urlpatterns = patterns(
     url(r'^/environment/(?P<rid>\d+)$', RockOnEnvironmentView.as_view(), ),
     url(r'^/devices/(?P<rid>\d+)$', RockOnDeviceView.as_view(), ),
     url(r'^/labels/(?P<rid>\d+)$', RockOnLabelView.as_view(), ),
+    url(r'^/networks/(?P<rid>\d+)$', RockOnNetworkView.as_view(), ),
     url(r'^/(?P<command>update)$', RockOnView.as_view(), ),
     url(r'^/(?P<rid>\d+)$', RockOnIdView.as_view(), ),
     url(r'^/(?P<rid>\d+)/(?P<command>install|uninstall|update|start|stop|state_update|status_update)$',  # noqa E501

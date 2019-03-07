@@ -23,11 +23,11 @@
         <!--<td>{{this.containerp}}{{isPublished this.id}}</td>-->
     </tr>
 {{/each}}
-{{#each cnets}}
+{{#each rocknets}}
     <tr>
         <td>Network</td>
-        <td>{{this.key}}</td>
-        <td>{{this.val}}</td>
+        <td>{{this.container_name}}</td>
+        <td>{{this.docker_name}}</td>
     </tr>
 {{/each}}
 {{display_newCnets}}

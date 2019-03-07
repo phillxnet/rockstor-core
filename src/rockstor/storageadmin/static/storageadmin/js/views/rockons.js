@@ -897,6 +897,7 @@ RockonSettingsWizardView = WizardView.extend({
 
     initialize: function() {
         WizardView.prototype.initialize.apply(this, arguments);
+        console.log('this is RockonSettingsWizardView');
         this.template = window.JST.rockons_wizard_summary;
         this.pages = [RockonSettingsSummary, ];
         this.rockon = this.model.get('rockon');
@@ -919,6 +920,9 @@ RockonSettingsWizardView = WizardView.extend({
             rid: this.rockon.id
         });
         this.containers = new ContainerCollection(null, {
+            rid: this.rockon.id
+        });
+        this.rocknets = new RockOnNetworkCollection(null, {
             rid: this.rockon.id
         });
 
@@ -996,6 +1000,16 @@ RockonSettingsWizardView = WizardView.extend({
         this.labels.fetch({
             success: function() {
                 _this.model.set('labels', _this.labels);
+                _this.fetchRocknets();
+            }
+        });
+    },
+
+    fetchRocknets: function() {
+        var _this = this;
+        this.rocknets.fetch({
+            success: function() {
+                _this.model.set('rocknets', _this.rocknets);
                 _this.addPages();
             }
         });
@@ -1545,7 +1559,7 @@ RockonSettingsSummary = RockstorWizardPage.extend({
             env: this.model.get('environment').toJSON(),
             labels: this.model.get('labels').toJSON(),
             new_labels: this.model.get('new_labels'),
-            // cnets: this.model.get('cnets'),
+            rocknets: this.model.get('rocknets').toJSON(),
             new_cnets: this.model.get('new_cnets'),
             rockon: this.model.get('rockon')
         }));

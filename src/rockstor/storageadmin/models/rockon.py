@@ -18,6 +18,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from django.db import models
 from storageadmin.models import (Share, BridgeConnection)
+import logging
+logger = logging.getLogger(__name__)
 
 
 class RockOn(models.Model):
@@ -95,6 +97,18 @@ class DContainerLink(models.Model):
 class DContainerNetwork(models.Model):
     container = models.ForeignKey(DContainer)
     connection = models.ForeignKey(BridgeConnection)
+
+    @property
+    def docker_name(self):
+        if (self.connection is not None):
+            return self.connection.docker_name
+        return None
+
+    @property
+    def container_name(self):
+        if (self.container is not None):
+            return self.container.name
+        return None
 
     class Meta:
         unique_together = ('container', 'connection')

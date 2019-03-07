@@ -288,6 +288,9 @@ class RockOnLabelSerializer(serializers.ModelSerializer):
 
 
 class RockOnNetworkSerializer(serializers.ModelSerializer):
+    docker_name = serializers.CharField()
+    container_name = serializers.CharField()
+
     class Meta:
         model = DContainerNetwork
 
