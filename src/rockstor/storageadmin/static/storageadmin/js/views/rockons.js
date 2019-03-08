@@ -1448,6 +1448,36 @@ RockonEditPorts = RockstorWizardPage.extend({
             });
         });
 
+        // Preselect networks fields with currently attached rocknets
+        console.log('this.model.rocknets.length is = ', this.model.get('rocknets').length);
+        if (this.model.get('rocknets').length > 0) {
+            this.rocknets = this.model.get('rocknets');
+            this.rocknets_map = {};
+            for (var i = 0; i < this.containers.length; i++) {
+                var c = this.containers.at(i);
+                var cname = c.get('name');
+                // console.log('container name cname is = ', cname);
+                this.rocknets_map[cname] = [];
+            };
+            console.log('this.rocknets_map after container init = ', this.rocknets_map);
+            for (var i = 0; i < this.rocknets.length; i++) {
+                var r = this.rocknets.at(i);
+                // console.log('r.docker_name is = ', r.get('docker_name'));
+                // console.log('r.container_name is = ', r.get('container_name'));
+                var rcname = r.get('container_name');
+                var rdname = r.get('docker_name');
+                this.rocknets_map[rcname].push(rdname);
+            };
+            console.log('this.rocknets_map is = ', this.rocknets_map);
+            for (var k in this.rocknets_map) {
+                if (this.rocknets_map.hasOwnProperty(k)) {
+                    console.log('The selected rocknets for container %s are %s', k, this.rocknets_map[k]);
+                    this.$('#' + k).val(this.rocknets_map[k]);
+                    this.$('#' + k).trigger('change');
+                }
+            }
+        }
+
 
         console.log('This during renderPorts', this);
         // this.ports_form = this.$('#container-select-form');
