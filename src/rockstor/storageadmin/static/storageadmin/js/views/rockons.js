@@ -758,7 +758,7 @@ RockonDeviceChoice = RockonCustomChoice.extend({
         this.validator = this.device_form.validate({
             rules: rules,
             messages: messages
-        });
+        })
         return this;
     },
 
@@ -1436,10 +1436,6 @@ RockonEditPorts = RockstorWizardPage.extend({
             })
         }));
 
-        // this.$('#networks').select2({
-        //     dropdownParent: $('#install-rockon-overlay'),
-        //     width: '80%'
-        // });
         this.$('.form-control').each(function(index, element) {
             $(this).select2({
                 dropdownParent: $('#install-rockon-overlay'),
@@ -1450,20 +1446,22 @@ RockonEditPorts = RockstorWizardPage.extend({
 
         // Preselect networks fields with currently attached rocknets
         console.log('this.model.rocknets.length is = ', this.model.get('rocknets').length);
+        console.log('this.containers.length is = ', this.containers.length);
         if (this.model.get('rocknets').length > 0) {
             this.rocknets = this.model.get('rocknets');
             this.rocknets_map = {};
             for (var i = 0; i < this.containers.length; i++) {
                 var c = this.containers.at(i);
                 var cname = c.get('name');
-                // console.log('container name cname is = ', cname);
+                console.log('container name cname is = ', cname);
+                // this.rocknets_map['container'] = cname;
                 this.rocknets_map[cname] = [];
             };
             console.log('this.rocknets_map after container init = ', this.rocknets_map);
             for (var i = 0; i < this.rocknets.length; i++) {
                 var r = this.rocknets.at(i);
-                // console.log('r.docker_name is = ', r.get('docker_name'));
-                // console.log('r.container_name is = ', r.get('container_name'));
+                console.log('r.docker_name is = ', r.get('docker_name'));
+                console.log('r.container_name is = ', r.get('container_name'));
                 var rcname = r.get('container_name');
                 var rdname = r.get('docker_name');
                 this.rocknets_map[rcname].push(rdname);
@@ -1478,19 +1476,74 @@ RockonEditPorts = RockstorWizardPage.extend({
             }
         }
 
-
         console.log('This during renderPorts', this);
-        // this.ports_form = this.$('#container-select-form');
-        // this.validator = this.container_form.validate({
-        //     rules: {
-        //         'container': 'required',
-        //         'labels[]': 'required'
-        //     },
-        //     messages: {
-        //         'container': 'Please select a container',
-        //         'labels[]': 'Please enter a label'
-        //     }
+
+        // // Use form validation to verify settings were altered
+        // change in ports' publish state?
+        var rules_ports = {};
+        // this.ports.each(function(port) {
+        //     rules_ports['publish[' + port.id + ']'] = {
+        //         checkPorts: true,
+        //         // required: false
+        //         require_from_group: [1, ".ports-group"]
+        //     };
         // });
+        var psDb = [];
+        this.ports.each(function (port) {
+            if (port.attributes.publish) {
+                psDb.push(port.id);
+            }
+        });
+
+        console.log('rules_ports = ', rules_ports);
+        console.log('psDb = ', psDb);
+
+        var result = [];
+        $.validator.addMethod('checkPorts', function(value, element) {
+        // change in ports' publish state?
+        //    get ports' publish state from database: use psDb
+        //    get new ports' publish state from form
+        //    If element is checked:
+            if ($(element).attr('checked') == 'checked') {
+                result.push('checked');
+                result.push(psDb.indexOf($(element).attr('id')) != -1);
+                return psDb.indexOf($(element).attr('id')) != -1;
+                // return false;
+                //        return True if ID is not in psDb
+                //        else return False
+            } else if ($(element).attr('checked') != 'checked') {
+                result.push('unchecked');
+                result.push(psDb.indexOf($(element).attr('id')) == -1);
+                return psDb.indexOf($(element).attr('id')) == -1;
+                // return false;
+                //        return True if ID is in psDb
+                //        else return False
+            } else {
+                return false;
+            }
+        }, function(params, element) {
+            return 'Invalid with ' + result;
+            // return 'This port id ' + $(element).attr('id') + ' is not in ' + psDb2;
+        });
+
+        this.ports_form = this.$('#edit-ports-form');
+        this.ports_validator = this.ports_form.validate({
+            debug: true,
+            // rules: rules_ports,
+            groups: {
+                'ports-group': "publish[]"
+            },
+            rules: {
+                'publish[]': {
+                    checkPorts: true,
+                    required: false
+                }
+            }
+            // messages: messages_ports
+            // messages: {
+            //     'publish[]': 'Was a port modified?'
+            // }
+        })
 
         // Ensure previous page is correct
         if (this.rockon.get('volume_add_support')) {
@@ -1502,10 +1555,89 @@ RockonEditPorts = RockstorWizardPage.extend({
     },
 
     save: function() {
-        // if (!this.container_form.valid()) {
-        //     this.validator.showErrors();
+        console.log('save() was triggered');
+
+        // Get join-networks data
+        var _this = this;
+        var net_data2 = _this.$('#join-networks').getJSON();
+        Object.keys(net_data2).forEach((key) =>
+            (net_data2[key] === null) && delete net_data2[key]);
+        console.log('net_data2 is = ', net_data2);
+
+        // Compare to rocknets in database
+        var differentRocknets = function (new_nets, reference) {
+            /**
+             * Compare the newly-defined rocknets attached to one
+             * or more containers in a rock-on, to those already
+             * existing in the database (if any).
+             * It returns 'true' if the two differ.
+             * @param {string} new_nets Rocknets object newly-defined
+             *                 in the form
+             * @param {string} reference Rocknets object already defined
+             *                 in the database
+             * @return {string} true if both objects differ,
+             *                  false otherwise
+             */
+            // get keys of each object
+            var new_keys = Object.keys(new_nets);
+            var ref_keys = Object.keys(reference);
+
+            // Compare how many containers have rocknets
+            if (new_keys.length != ref_keys.length) {
+                console.log('The number of containers with rocknet differ');
+                return true;
+            }
+
+            // for each key, compare arrays
+            var new_entries = Object.entries(new_nets);
+            var ref_entries = Object.entries(reference);
+
+            for (var [key, nets] of new_entries) {
+                // Get all needed values
+                if (nets !== null) {
+                    console.log('the new key is ', key);
+                    console.log('the new nets are ', nets);
+                    var ref_val = ref_entries[ref_keys.indexOf(key)][1];
+                    console.log('ref_val is ', ref_val);
+                    var new_len = nets.length;
+                    var ref_len = ref_val.length;
+                    console.log('new_len is ', new_len);
+                    console.log('ref_len is ', ref_len);
+
+                    // Compare lengths
+                    if (new_len != ref_len) {
+                        return true;
+                    }
+                    // Compare individual values
+                    if (!nets.every(e => ref_val.includes(e))) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
+
+        console.log('Do Rocknets differ? ', differentRocknets(net_data2, this.rocknets_map));
+
+        if (this.ports_form.valid()) {
+            console.log('ports_form IS valid');
+            var live = false;
+        } else if (differentRocknets(net_data2, this.rocknets_map)) {
+            console.log('ports_form is NOT valid and Rocknets differ');
+            var live = true;
+        } else {
+            console.log('ports_form is NOT valid and Rocknet do NOT differ');
+            this.ports_validator.showErrors();
+            return $.Deferred().reject();
+        }
+        console.log('LIVE is set as ', live);
+
+        // if (!this.ports_form.valid()) {
+        //     console.log('ports_form is NOT valid');
+        //     this.ports_validator.showErrors();
         //     return $.Deferred().reject();
         // }
+
         // var field_data = $('input[name^=publish]').map(function(idx, elem) {
         //     return $(elem).attr('checked');
         // }).get();
@@ -1523,16 +1655,12 @@ RockonEditPorts = RockstorWizardPage.extend({
         this.model.set('edit_ports', this.edit_ports);
 
         // Get join-networks data
-        var _this = this;
-        var net_data2 = _this.$('#join-networks').getJSON();
-        console.log('net_data2 is = ', net_data2);
-        var net_data3 = _this.$('#join-networks').serializeArray();
-        console.log('net_data3 is = ', net_data3);
         var field_data = $(".form-control").val();
         console.log('field_data is = ', field_data);
         var s2_data = $(".form-control").select2('data');
         console.log('s2_data is = ', s2_data);
-
+        var net_data3 = _this.$('#join-networks').serializeArray();
+        console.log('net_data3 is = ', net_data3);
         var cnets2 = {};
         for (var i = 0; i < net_data3.length; i++){
             cnets2[net_data3[i]['value']] = net_data3[i]['name'];
