@@ -1578,44 +1578,52 @@ RockonEditPorts = RockstorWizardPage.extend({
              * @return {string} true if both objects differ,
              *                  false otherwise
              */
-            // get keys of each object
-            var new_keys = Object.keys(new_nets);
-            var ref_keys = Object.keys(reference);
-
-            // Compare how many containers have rocknets
-            if (new_keys.length != ref_keys.length) {
-                console.log('The number of containers with rocknet differ');
-                return true;
-            }
-
-            // for each key, compare arrays
-            var new_entries = Object.entries(new_nets);
-            var ref_entries = Object.entries(reference);
-
-            for (var [key, nets] of new_entries) {
-                // Get all needed values
-                if (nets !== null) {
-                    console.log('the new key is ', key);
-                    console.log('the new nets are ', nets);
-                    var ref_val = ref_entries[ref_keys.indexOf(key)][1];
-                    console.log('ref_val is ', ref_val);
-                    var new_len = nets.length;
-                    var ref_len = ref_val.length;
-                    console.log('new_len is ', new_len);
-                    console.log('ref_len is ', ref_len);
-
-                    // Compare lengths
-                    if (new_len != ref_len) {
+            if (typeof reference === 'undefined') {
+                console.log('reference is undefined');
+                return Object.keys(new_nets).length > 0;
+            } else {
+                // get keys of each object
+                var new_keys = Object.keys(new_nets);
+                if (!new_keys.length > 0) {
+                    console.log('new_nets is emtpy');
+                    return true;
+                } else {
+                    var ref_keys = Object.keys(reference);
+                    // Compare how many containers have rocknets
+                    if (new_keys.length != ref_keys.length) {
+                        console.log('The number of containers with rocknet differ');
                         return true;
                     }
-                    // Compare individual values
-                    if (!nets.every(e => ref_val.includes(e))) {
-                        return true;
+                    // for each key, compare arrays
+                    var new_entries = Object.entries(new_nets);
+                    var ref_entries = Object.entries(reference);
+                    for (var [key, nets] of new_entries) {
+                        // Get all needed values
+                        if (nets !== null) {
+                            console.log('the new key is ', key);
+                            console.log('the new nets are ', nets);
+                            var ref_val = ref_entries[ref_keys.indexOf(key)][1];
+                            console.log('ref_val is ', ref_val);
+                            var new_len = nets.length;
+                            var ref_len = ref_val.length;
+                            console.log('new_len is ', new_len);
+                            console.log('ref_len is ', ref_len);
+                            // Compare lengths
+                            if (new_len != ref_len) {
+                                return true;
+                            }
+                            // Compare individual values
+                            if (!nets.every(e => ref_val.includes(e))) {
+                                return true;
+                            }
+                        }
                     }
                 }
+                return false;
             }
-            return false;
         };
+
+
 
         console.log('Do Rocknets differ? ', differentRocknets(net_data2, this.rocknets_map));
 
@@ -1656,17 +1664,16 @@ RockonEditPorts = RockstorWizardPage.extend({
 
         // Get join-networks data
         var field_data = $(".form-control").val();
-        console.log('field_data is = ', field_data);
         var s2_data = $(".form-control").select2('data');
-        console.log('s2_data is = ', s2_data);
         var net_data3 = _this.$('#join-networks').serializeArray();
-        console.log('net_data3 is = ', net_data3);
         var cnets2 = {};
         for (var i = 0; i < net_data3.length; i++){
             cnets2[net_data3[i]['value']] = net_data3[i]['name'];
             };
+        console.log('field_data is = ', field_data);
+        console.log('s2_data is = ', s2_data);
+        console.log('net_data3 is = ', net_data3);
         console.log('cnets2 is = ', cnets2);
-
 
         this.new_cnets = net_data2;
         this.model.set('new_cnets', this.new_cnets);
