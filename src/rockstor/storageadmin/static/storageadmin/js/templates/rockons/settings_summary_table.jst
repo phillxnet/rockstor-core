@@ -23,6 +23,9 @@
         <!--<td>{{this.containerp}}{{isPublished this.id}}</td>-->
     </tr>
 {{/each}}
+{{#if new_cnets}}
+    {{display_newCnets}}
+{{else}}
 {{#each rocknets}}
     <tr>
         <td>Network</td>
@@ -30,7 +33,7 @@
         <td>{{this.docker_name}}</td>
     </tr>
 {{/each}}
-{{display_newCnets}}
+{{/if}}
 {{#each cc}}
     <tr>
         <td>Custom</td>

@@ -1769,7 +1769,7 @@ RockonSettingsSummary = RockstorWizardPage.extend({
             return new Handlebars.SafeString(html);
         });
         Handlebars.registerHelper('display_newCnets', function() {
-            // Display newly-defined networks and their corresponding container
+            // Display newly-defined rocknets and their corresponding container
             // for confimation before submit in settings_summary_table.jst
             var html = '';
             for (new_cnet in this.new_cnets) {
