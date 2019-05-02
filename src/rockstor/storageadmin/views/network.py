@@ -30,7 +30,8 @@ from storageadmin.serializers import (NetworkDeviceSerializer,
                                       NetworkConnectionSerializer)
 from storageadmin.views.rockon_helpers import (dnet_create, dnet_remove,
                                                probe_running_containers,
-                                               dnet_connect, dnet_disconnect)
+                                               dnet_connect, dnet_disconnect,
+                                               docker_status)
 from system import network
 import rest_framework_custom as rfc
 
@@ -87,7 +88,7 @@ class NetworkMixin(object):
                 bco.save()
             except BondConnection.DoesNotExist:
                 BondConnection.objects.create(connection=co, **config)
-        elif (ctype == 'bridge'):
+        elif ((ctype == 'bridge') and (docker_status())):
             try:
                 brco = BridgeConnection.objects.get(connection=co)
                 brco.docker_name = config['docker_name']

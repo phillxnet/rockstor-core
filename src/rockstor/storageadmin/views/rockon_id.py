@@ -27,7 +27,7 @@ from storageadmin.serializers import RockOnSerializer
 import rest_framework_custom as rfc
 from storageadmin.util import handle_exception
 from rockon_helpers import (docker_status, start, stop, install, uninstall,
-                            update, dnet_remove, dnet_create)
+                            update, dnet_remove, dnet_create, dnet_disconnect)
 from system.services import superctl
 from network import NetworkMixin
 
@@ -186,6 +186,7 @@ class RockOnIdView(rfc.GenericView):
                 for co in DContainer.objects.filter(rockon=rockon):
                     DVolume.objects.filter(container=co, uservol=True).delete()
                     DContainerLabel.objects.filter(container=co).delete()
+                    DContainerNetwork.objects.filter(container=co).delete()
                     if DContainerLink.objects.filter(destination=co):
                         logger.debug('One of the rockon containers [{} ({})] has a link'.format(co, co.name))
                         dnet_remove(container=co)
@@ -210,8 +211,18 @@ class RockOnIdView(rfc.GenericView):
                 label_map = request.data.get('labels')
                 ports_publish = request.data.get('edit_ports')
                 cnets_map = request.data.get('cnets')
+                update_mode = request.data.get('update_mode')
                 live = False
+                if (request.data.get('update_mode') == 'live'):
+                    live = True
+                logger.debug('During rockon_id, live is {}'.format(live))
+                logger.debug('During rockon_id, share_map is {}'.format(share_map))
+                logger.debug('During rockon_id, label_map is {}'.format(label_map))
+                logger.debug('During rockon_id, ports_pusblish is {}'.format(ports_publish))
+                logger.debug('During rockon_id, cnets_map is {}'.format(cnets_map))
+                logger.debug('During rockon_id, update_mode is {}'.format(update_mode))
                 if bool(share_map):
+                    logger.debug('Add new shares with share_map = {}'.format(share_map))
                     for co in DContainer.objects.filter(rockon=rockon):
                         for s in share_map.keys():
                             sname = share_map[s]
@@ -238,6 +249,7 @@ class RockOnIdView(rfc.GenericView):
                                          dest_dir=s)
                             do.save()
                 if bool(label_map):
+                    logger.debug('Add new labels with label_map = {}'.format(label_map))
                     for co in DContainer.objects.filter(rockon=rockon):
                         for c in label_map.keys():
                             cname = label_map[c]
@@ -246,50 +258,50 @@ class RockOnIdView(rfc.GenericView):
                                 continue
                             lo = DContainerLabel(container=co, key=cname, val=c)
                             lo.save()
-                if bool(ports_publish):
+                if ((update_mode == 'normal') and bool(ports_publish)):
+                    logger.debug('Edit ports with ports_publish = {}'.format(ports_publish))
                     for p in ports_publish.keys():
                         logger.debug('Deal with port number: {}'.format(p))
                         po = DPort.objects.get(id=p)
                         pub = ports_publish[p]
-                        logger.debug('pub is = {}'.format(pub))
                         logger.debug('Edit port {} ({}) with the following status: {}'.format(po.id, po.description, pub))
                         po.publish = True
                         if (pub == 'unchecked'):
                             po.publish = False
                         po.save()
-                if bool('cnets_map'):
-                    # Update rock-ons nets. We have the following scenarios:
-                    # A: Need to change cnets, but not ports
-                    # B: Need to change ports, but not cnets
-                    # C: Need to change cnets AND ports
-                    # @todo: check for changes in requested publish status and for condition A above
-                    #   if A, simply connect container to network without uninstall-reinstall routine
-                    #   use special option in async.update(rockon) call below?
-
-                    # Base update prcedure
-                    logger.debug('Normal update procedure for rocknets')
-                    for c in cnets_map:
-                        for net in cnets_map[c]:
-                            # logger.debug('The cnet is {}'.format(net))
-                            logger.debug('The container is {}, and the net is {}'.format(c,net))
-                            co = DContainer.objects.get(rockon=rockon, name=c)
-                            if (not BridgeConnection.objects.filter(docker_name=net).exists()):
-                                logger.debug('the network {} does not exist.'.format(net))
-                                dnet_create(network=net)
-                                # @todo: integrate the forced update of network connections
-                                #   into dnet_create() with an optional flag `update=True`
-                                NetworkMixin._refresh_connections()
-                            brco = BridgeConnection.objects.get(docker_name=net)
-                            logger.debug('co is {}, with id {} and name {}'.format(co, co.id, co.name))
-                            logger.debug('brco is {}, with docker_name {}'.format(brco, brco.docker_name))
-                            cno = DContainerNetwork(container=co, connection=brco)
-                            cno.save()
-                    if (not bool(ports_publish)): # case A above
-                        live = True # no need to uninstall-reinstall rock-on
+                if bool(update_mode):
+                    logger.debug('Deal with rocknets with cnets = {}'.format(cnets_map))
+                    # Reset all existing rocknets
+                    for co in DContainer.objects.filter(rockon=rockon):
+                        for cno in DContainerNetwork.objects.filter(container=co.id):
+                            logger.debug('Disconnect {} from {}'.format(co.name, cno.connection.docker_name))
+                            dnet_disconnect(co.name, cno.connection.docker_name)
+                        DContainerNetwork.objects.filter(container=co).delete()
+                    # Create new one(s)
+                    if bool(cnets_map):
+                        for c in cnets_map.keys():
+                            # Create new entries for updated rocknets settings
+                            for net in cnets_map[c]:
+                                logger.debug('The container is {}, and the net is {}'.format(c, net))
+                                if (not BridgeConnection.objects.filter(docker_name=net).exists()):
+                                    logger.debug('the network {} does not exist.'.format(net))
+                                    dnet_create(network=net)
+                                    # @todo: integrate the forced update of network connections
+                                    #   into dnet_create() with an optional flag `update=True`
+                                    NetworkMixin._refresh_connections()
+                                brco = BridgeConnection.objects.get(docker_name=net)
+                                co = DContainer.objects.get(rockon=rockon, name=c)
+                                logger.debug('The container ({}) is {}'.format(co.id, co.name))
+                                logger.debug('brco is {}, with docker_name {}'.format(brco.id, brco.docker_name))
+                                cno = DContainerNetwork(container=co, connection=brco)
+                                cno.save()
+                    # if (not bool(ports_publish)): # case A above
+                    #     live = True # no need to uninstall-reinstall rock-on
                 rockon.state = 'pending_update'
                 rockon.save()
-                update.async(rockon.id)
-                # update.async(rockon.id, live=live)
+                # update.async(rockon.id)
+                logger.debug('update will be live: {}'.format(live))
+                update.async(rockon.id, live=live)
             elif (command == 'stop'):
                 stop.async(rockon.id)
                 rockon.status = 'pending_stop'

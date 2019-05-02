@@ -1629,16 +1629,17 @@ RockonEditPorts = RockstorWizardPage.extend({
 
         if (this.ports_form.valid()) {
             console.log('ports_form IS valid');
-            var live = false;
+            var update_mode = 'normal';
         } else if (differentRocknets(net_data2, this.rocknets_map)) {
             console.log('ports_form is NOT valid and Rocknets differ');
-            var live = true;
+            update_mode = 'live';
         } else {
             console.log('ports_form is NOT valid and Rocknet do NOT differ');
             this.ports_validator.showErrors();
             return $.Deferred().reject();
         }
-        console.log('LIVE is set as ', live);
+        console.log('Update_mode is set as ', update_mode);
+        this.model.set('update_mode', update_mode);
 
         // if (!this.ports_form.valid()) {
         //     console.log('ports_form is NOT valid');
@@ -1663,17 +1664,17 @@ RockonEditPorts = RockstorWizardPage.extend({
         this.model.set('edit_ports', this.edit_ports);
 
         // Get join-networks data
-        var field_data = $(".form-control").val();
-        var s2_data = $(".form-control").select2('data');
-        var net_data3 = _this.$('#join-networks').serializeArray();
-        var cnets2 = {};
-        for (var i = 0; i < net_data3.length; i++){
-            cnets2[net_data3[i]['value']] = net_data3[i]['name'];
-            };
-        console.log('field_data is = ', field_data);
-        console.log('s2_data is = ', s2_data);
-        console.log('net_data3 is = ', net_data3);
-        console.log('cnets2 is = ', cnets2);
+        // var field_data = $(".form-control").val();
+        // var s2_data = $(".form-control").select2('data');
+        // var net_data3 = _this.$('#join-networks').serializeArray();
+        // var cnets2 = {};
+        // for (var i = 0; i < net_data3.length; i++){
+        //     cnets2[net_data3[i]['value']] = net_data3[i]['name'];
+        //     };
+        // console.log('field_data is = ', field_data);
+        // console.log('s2_data is = ', s2_data);
+        // console.log('net_data3 is = ', net_data3);
+        // console.log('cnets2 is = ', cnets2);
 
         this.new_cnets = net_data2;
         this.model.set('new_cnets', this.new_cnets);
@@ -1808,10 +1809,12 @@ RockonSettingsComplete = RockstorWizardPage.extend({
         this.new_labels = this.model.get('new_labels');
         this.edit_ports = this.model.get('edit_ports');
         this.new_cnets = this.model.get('new_cnets');
+        this.update_mode = this.model.get('update_mode');
         console.log('this.edits_portJSON = ', JSON.stringify({
             'labels': this.new_labels,
             'edit_ports': this.edit_ports,
-            'new_cnets': this.new_cnets
+            'new_cnets': this.new_cnets,
+            'update_mode': this.update_mode
         }));
         RockstorWizardPage.prototype.initialize.apply(this, arguments);
     },
@@ -1828,29 +1831,35 @@ RockonSettingsComplete = RockstorWizardPage.extend({
         if (document.getElementById('next-page').disabled) return false;
         document.getElementById('next-page').disabled = true;
 
-        console.log('data sent is = ', JSON.stringify({
-            'labels': this.new_labels,
-            'edit_ports': this.edit_ports,
-            'new_cnets': this.new_cnets
-        }));
+        var dataObj = {};
+        if (!_.isEmpty(this.shares)) dataObj['shares'] = this.shares;
+        if (!_.isEmpty(this.new_labels)) dataObj['labels'] = this.new_labels;
+        if (!_.isEmpty(this.edit_ports)) dataObj['edit_ports'] = this.edit_ports;
+        if (!_.isEmpty(this.new_cnets)) dataObj['cnets'] = this.new_cnets;
+        if (!_.isEmpty(this.update_mode)) dataObj['update_mode'] = this.update_mode;
+
+        // console.log('data sent is = ', JSON.stringify({
+        //     'labels': this.new_labels,
+        //     'edit_ports': this.edit_ports,
+        //     'new_cnets': this.new_cnets,
+        //     'update_mode': this.update_mode
+        // }));
+        console.log('data to be sent is = ', JSON.stringify(dataObj));
 
         return $.ajax({
             url: '/api/rockons/' + this.rockon.id + '/update',
             type: 'POST',
             dataType: 'json',
             contentType: 'application/json',
-            data: JSON.stringify({
-                'shares': this.shares,
-                'labels': this.new_labels,
-                'edit_ports': this.edit_ports,
-                'cnets': this.new_cnets
-            }),
-            success: function() {
-                console.log(JSON.stringify({
-                    'edit_ports': this.edit_ports,
-                    'cnets': this.new_cnets
-                }));
-            }
+            // data: JSON.stringify({
+            //     'shares': this.shares,
+            //     'labels': this.new_labels,
+            //     'edit_ports': this.edit_ports,
+            //     'cnets': this.new_cnets,
+            //     'update_mode': this.update_mode
+            // }),
+            data: JSON.stringify(dataObj),
+            success: function() {}
         });
     }
 });
