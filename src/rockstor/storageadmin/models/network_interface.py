@@ -144,6 +144,21 @@ class NetworkConnection(models.Model):
         docker_options = {}
         if self.bridgeconnection_set.count() > 0:
             brco = self.bridgeconnection_set.first()
+            # cids = brco.dcontainernetwork_set.filter(connection=brco.id).values_list('container', flat=True)
+            # cids = DContainerNetwork.objects.filter(connection=brco.id).values_list('container', flat=True)
+            connected_containers = []
+            if brco.dcontainernetwork_set.filter(connection=brco.id).count() > 0:
+                for i in range(brco.dcontainernetwork_set.filter(connection=brco.id).count()):
+                    cname = brco.dcontainernetwork_set.filter(
+                        connection=brco.id).order_by('id')[i].container_name
+                    rname = brco.dcontainernetwork_set.filter(
+                        connection=brco.id).order_by('id')[i].container.rockon.name
+                    logger.debug('Connected_containers: for i = {}: {} ({})'.format(i, cname, rname))
+                    connected_containers.append('{} ({})'.format(cname, rname))
+            # for cid in cids:
+            #     co = DContainer.objects.get(id=coid)
+            #     rockon_name = DContainer.objects.filter(id=coid).rockon.name
+                # rockon_name = RockOn.objects.get(id=rid).name
             docker_options['aux_address'] = brco.aux_address
             docker_options['dgateway'] = brco.dgateway
             docker_options['host_binding'] = brco.host_binding
@@ -152,6 +167,7 @@ class NetworkConnection(models.Model):
             docker_options['ip_masquerade'] = brco.ip_masquerade
             docker_options['ip_range'] = brco.ip_range
             docker_options['subnet'] = brco.subnet
+            docker_options['containers'] = connected_containers
         return docker_options
 
 
