@@ -35,6 +35,11 @@
                 </tr>
                 {{/each}}
             </table>
+                {{#unless ports}}
+                    <div class="alert alert-success">
+                        <p>This rock-on does not have any port exposed to modify.</p>
+                    </div>
+                {{/unless}}
         </form>
         <h3>Networks (optional)&nbsp;<a href="http://rockstor.com/docs/" target="_blank"
                                         title="See Rockstor's documentation" rel="tooltip"><i
