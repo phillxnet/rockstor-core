@@ -316,7 +316,7 @@ def probe_running_containers(container=None, network=None, all=False):
 
 def dnet_remove(container=None, network=None):
     """
-    This method uses the docker toolset to remove a user-define network.
+    This method uses the docker toolset to remove a user-defined network.
     In Rockstor, these can be created either by a container_links object in a
     rock-on definition, or by the user. We thus need to account for both cases.
     :param container: Dcontainer object

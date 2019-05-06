@@ -188,7 +188,7 @@ class RockOnIdView(rfc.GenericView):
                     DContainerLabel.objects.filter(container=co).delete()
                     DContainerNetwork.objects.filter(container=co).delete()
                     if DContainerLink.objects.filter(destination=co):
-                        logger.debug('One of the rockon containers [{} ({})] has a link'.format(co, co.name))
+                        logger.debug('One of the containers [{} ({})] has a link'.format(co, co.name))
                         dnet_remove(container=co)
                     # Reset all ports to a published state (if any)
                     for po in DPort.objects.filter(container=co):
