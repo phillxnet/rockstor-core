@@ -117,6 +117,33 @@
                             {{/each}}
                         </table>
                         {{/hasChildren}}
+                        {{#if this.docker_name}}
+                        <p>Rocknet details</p>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>Name</th>
+                                <th>Auxiliary addresses</th>
+                                <th>Inter-containers communication</th>
+                                <th>Internal</th>
+                                <th>Host binding</th>
+                                <th>IP range</th>
+                                <th>IP masquerade</th>
+                                <th>Subnet</th>
+                                <th>Containers (Rock-on)</th>
+                            </tr>
+                            <tr>
+                                <td>{{this.docker_name}}</td>
+                                <td>{{this.docker_options.aux_address}}</td>
+                                <td>{{#if this.docker_options.icc}}Yes{{else}}No{{/if}}</td>
+                                <td>{{#if this.docker_options.internal}}Yes{{else}}No{{/if}}</td>
+                                <td>{{this.docker_options.host_binding}}</td>
+                                <td>{{this.docker_options.ip_range}}</td>
+                                <td>{{#if this.docker_options.ip_masquerade}}Yes{{else}}No{{/if}}</td>
+                                <td>{{this.docker_options.subnet}}</td>
+                                <td>{{this.docker_options.containers}}</td>
+                            </tr>
+                        </table>
+                        {{else}}
                         <p>member Devices</p>
                         <table class="table table-bordered">
                             <tr>
@@ -141,6 +168,7 @@
                             {{/if}}
                             {{/each}}
                         </table>
+                        {{/if}}
                     </div>
                 </td>
             </tr>
