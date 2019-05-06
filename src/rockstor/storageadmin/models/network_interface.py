@@ -214,6 +214,15 @@ class NetworkDevice(models.Model):
     class Meta:
         app_label = 'storageadmin'
 
+    @property
+    def dev_name(self):
+        if (self.dtype == 'bridge'):
+            return self.connection.docker_name
+        return self.name
+
+    class Meta:
+        app_label = 'storageadmin'
+
 
 # This is the most common of connection types that uses NetworkInterface of
 # dtype=ethernet
