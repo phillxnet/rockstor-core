@@ -1067,15 +1067,14 @@ RockonSettingsWizardView = WizardView.extend({
             this.$('#next-page').html('Add Storage');
             if (!this.rockon.get('volume_add_support')) {
                 this.$('#next-page').hide();
-            } else {
-                if (this.rockon.get('status') == 'started') {
-                    var _this = this;
-                    this.$('.wizard-btn').click(function() {
-                        //disabling the button so that the backbone event is not triggered after the alert click.
-                        _this.$('.wizard-btn').prop('disabled', true);
-                        alert('Rock-on must be turned off to change its settings.');
-                    });
-                }
+            }
+            if (this.rockon.get('status') == 'started') {
+                var _this = this;
+                this.$('.wizard-btn').click(function () {
+                    //disabling the button so that the backbone event is not triggered after the alert click.
+                    _this.$('.wizard-btn').prop('disabled', true);
+                    alert('Rock-on must be turned off to change its settings.');
+                });
             }
         } else if (this.currentPageNum == (this.pages.length - 2)) {
             this.$('#prev-page').show();
