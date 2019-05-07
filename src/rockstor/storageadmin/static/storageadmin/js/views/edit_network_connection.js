@@ -79,11 +79,19 @@ NetworkConnectionView = RockstorLayoutView.extend({
             this.renderMethodOptionalFields();
         }
 
+        $.validator.addMethod('isAlphanumeric', function(value, element) {
+            var regExp = new RegExp(/^[A-Za-z0-9]+$/);
+            return this.optional(element) || regExp.test(value);
+        }, 'The connection name can only contain alphanumeric characters.')
+
         this.validator = this.$('#new-connection-form').validate({
             onfocusout: false,
             onkeyup: false,
             rules: {
-                name: 'required',
+                name: {
+                    required: true,
+                    isAlphanumeric: true
+                },
                 ipaddr: {
                     required: {
                         depends: function(element) {
@@ -230,7 +238,7 @@ NetworkConnectionView = RockstorLayoutView.extend({
         this.$('#icc').tooltip({
             html: true,
             placement: 'right',
-            title: 'Enable or Disable Inter Container Connectivity.'
+            title: 'Enable or Disable Inter-Containers Connectivity.'
         });
 
     },
