@@ -1434,13 +1434,20 @@ RockonEditPorts = RockstorWizardPage.extend({
                 return c.toJSON();
             })
         }));
-        // @todo: Constrain select2 tags to alphanumeric characters using
-        //      the createTag function
-        //      (https://select2.org/tagging#constraining-tag-creation)
         this.$('.form-control').each(function(index, element) {
             $(this).select2({
                 dropdownParent: $('#install-rockon-overlay'),
                 width: '80%',
+                createTag: function (params) {
+                    if (params.term.match(/^[a-zA-Z0-9]+$/g)) {
+                        return {
+                            id: params.term,
+                            text: params.term
+                        }
+
+                        return null;
+                    }
+                },
                 tags: true
             });
         });
