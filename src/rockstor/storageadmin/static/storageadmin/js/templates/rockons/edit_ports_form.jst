@@ -2,7 +2,7 @@
     <div class="col-md-10">
         <div class="alert alert-warning">
             <p>
-                You can choose to un-publish any port currently exported by this rock-on. Be aware,
+                You can choose to unpublish any port currently exported by this rock-on. Be aware,
                 however, that this is likely to interfere with its proper function, so change these settings
                 only if you know what it implies.
             </p>
@@ -16,7 +16,7 @@
                     <th>Host &nbsp<i class="fa fa-info-circle fa-lg" title="Port number on the host" rel="tooltip"></i></th>
                     <th>Mapped Port&nbsp;&nbsp<i class="fa fa-info-circle fa-lg"
                                                  title="Port number mapped from the container" rel="tooltip"></i></th>
-                    <th>Publish&nbsp;&nbsp<i class="fa fa-info-circle fa-lg" title="Publish / Un-publish port"
+                    <th>Publish&nbsp;&nbsp<i class="fa fa-info-circle fa-lg" title="Publish / Unpublish port"
                                              rel="tooltip"></i></th>
                 </tr>
                 </thead>
@@ -41,10 +41,10 @@
                     </div>
                 {{/unless}}
         </form>
-        <h3>Networks (optional)&nbsp;<a href="http://rockstor.com/docs/" target="_blank"
+        <h3>Rocknets (optional)&nbsp;<a href="http://rockstor.com/docs/" target="_blank"
                                         title="See Rockstor's documentation" rel="tooltip"><i
                 class="glyphicon glyphicon-question-sign"></i></a></h3>
-        <p>Select one or more network(s) to join for each container of this rock-on:</p>
+        <p>Select one or more rocknet(s) to join for each container of this rock-on:</p>
         <div class="form-box">
             <form id="join-networks" name="aform" class="form-horizontal">
                 {{#each containers}}
