@@ -1739,8 +1739,14 @@ RockonSettingsSummary = RockstorWizardPage.extend({
         }));
         // Ensure previous page is correct
         if (!$.isEmptyObject(this.model.get('new_labels'))) {
+            console.log('New_labels is defined');
             this.parent.pages[1] = RockonAddLabel;
+        } else if (!$.isEmptyObject(this.model.get('new_cnets')) ||
+            typeof this.model.get('update_mode') !== 'undefined') {
+            console.log('New_cnets or update_mode is defined');
+            this.parent.pages[1] = RockonEditPorts;
         } else {
+            console.log('neither labels nor ports or rocknets are defined')
             if (this.rockon.get('volume_add_support')) {
                 this.parent.pages[1] = RockonAddShare;
             } else {
