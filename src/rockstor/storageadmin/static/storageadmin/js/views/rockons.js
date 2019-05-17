@@ -1529,10 +1529,11 @@ RockonEditPorts = RockstorWizardPage.extend({
             } else {
                 return false;
             }
-        }, function(params, element) {
-            return 'Invalid with ' + result;
-            // return 'This port id ' + $(element).attr('id') + ' is not in ' + psDb2;
-        });
+        }, ''
+            // function(params, element) {
+            // return 'Invalid with ' + result;
+            // }
+        );
 
         this.ports_form = this.$('#edit-ports-form');
         this.ports_validator = this.ports_form.validate({
@@ -1631,8 +1632,6 @@ RockonEditPorts = RockstorWizardPage.extend({
             }
         };
 
-
-
         console.log('Do Rocknets differ? ', differentRocknets(net_data2, this.rocknets_map));
 
         if (this.ports_form.valid()) {
@@ -1643,7 +1642,8 @@ RockonEditPorts = RockstorWizardPage.extend({
             update_mode = 'live';
         } else {
             console.log('ports_form is NOT valid and Rocknet do NOT differ');
-            this.ports_validator.showErrors();
+            // this.ports_validator.showErrors();
+            alert('Please customize either ports or rocknets before proceeding further.')
             return $.Deferred().reject();
         }
         console.log('Update_mode is set as ', update_mode);
