@@ -211,12 +211,9 @@ class NetworkDevice(models.Model):
             return None
         return self.connection.name
 
-    class Meta:
-        app_label = 'storageadmin'
-
     @property
     def dev_name(self):
-        if (self.dtype == 'bridge'):
+        if ((self.dtype == 'bridge') and (self.connection is not None)):
             return self.connection.docker_name
         return self.name
 
