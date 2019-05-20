@@ -256,7 +256,7 @@ def dnets(id=None, type=None):
     List the docker names of all docker networks.
     :param id: string, used to test for network presence.
     :param type: string, either 'custom' or 'builtin'
-    :return:
+    :return: list
     """
     cmd = list(DNET) + ['ls',
                         # '--filter', 'type=custom',
@@ -319,8 +319,8 @@ def dnet_remove(container=None, network=None):
     This method uses the docker toolset to remove a user-defined network.
     In Rockstor, these can be created either by a container_links object in a
     rock-on definition, or by the user. We thus need to account for both cases.
-    :param container: Dcontainer object
-    :param network: string of network name as seen by docker network ls
+    :param container: DContainer object
+    :param network: string of network name as seen by `docker network ls`
     :return:
     """
     if container:
@@ -340,6 +340,23 @@ def dnet_remove(container=None, network=None):
 def dnet_create(network, aux_address=None, dgateway=None, host_binding=None,
                 icc=None, internal=None, ip_masquerade=None, ip_range=None,
                 mtu=1500, subnet=None, update=False):
+    """
+    This method checks for an already existing docker network with the same name.
+    If none is found, it will be created using the different parameters given.
+    If no parameters are specified, the network will be created using docker's defaults.
+    :param network:
+    :param aux_address:
+    :param dgateway:
+    :param host_binding:
+    :param icc:
+    :param internal:
+    :param ip_masquerade:
+    :param ip_range:
+    :param mtu:
+    :param subnet:
+    :param update:
+    :return:
+    """
     o, e, rc = run_command(list(DNET) + ['list', '--format', '{{.Name}}', ])
     if (network not in o):
         logger.debug('the network {} was NOT detected, so create it now.'.format(network))
