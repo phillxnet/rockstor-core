@@ -1,5 +1,5 @@
 """
-Copyright (c) 2012-2013 RockStor, Inc. <http://rockstor.com>
+Copyright (c) 2012-2019 RockStor, Inc. <http://rockstor.com>
 This file is part of RockStor.
 
 RockStor is free software; you can redistribute it and/or modify
@@ -40,10 +40,24 @@ def val(s):
     return v
 
 
-def devices():
-    dmap = {}
+def get_dev_list():
+    """
+    Returns a list of connection devices as seen by Network Manager
+    :return: list
+    """
     o, e, rc = run_command([NMCLI, '-t', '-f', 'device', 'device'])
-    for dev in o:
+    return o
+
+
+def get_dev_config(dev_list):
+    """
+    Takes a list of connection devices and returns a dictionary with
+    each device's config as seens by Network Manager
+    :param dev_list: list returned by get_dev_list()
+    :return: dictionary
+    """
+    dmap = {}
+    for dev in dev_list:
         if (len(dev.strip()) == 0):
             continue
         tmap = {
@@ -53,7 +67,7 @@ def devices():
             'state': None,
         }
         try:
-            o2, e2, r2 = run_command([NMCLI, 'd', 'show', dev])
+            o, e, r = run_command([NMCLI, 'd', 'show', dev])
         except CommandException as e:
             # especially veth devices can vanish abruptly sometimes.
             if e.rc == 10:
@@ -62,7 +76,7 @@ def devices():
                 continue
             raise
 
-        for l in o2:
+        for l in o:
             if (re.match('GENERAL.TYPE:', l) is not None):
                 tmap['dtype'] = val(l)
             elif (re.match('GENERAL.HWADDR:', l) is not None):
@@ -79,9 +93,23 @@ def devices():
     return dmap
 
 
-def connections():
-    cmap = {}
+def get_con_list():
+    """
+    Returns a list of connections as seen by Network Manager.
+    :return: list
+    """
     o, e, rc = run_command([NMCLI, '-t', '-f', 'uuid', 'c', 'show', ])
+    return o
+
+
+def get_con_config(con_list):
+    """
+    Takes a list of connections and returns a dictionary with
+    each connection's config as seens by Network Manager
+    :param con_list: list returned by get_con_list()
+    :return: dictionary
+    """
+    cmap = {}
 
     def flatten(l):
         s = ','.join(l)
@@ -96,7 +124,7 @@ def connections():
             aux_list.append('{}={}'.format(k, v))
         return flatten(aux_list)
 
-    for uuid in o:
+    for uuid in con_list:
         if (len(uuid.strip()) == 0):
             continue
         tmap = {
@@ -114,7 +142,7 @@ def connections():
             'ipv6_dns_search': None,
         }
         try:
-            o2, e2, rc2 = run_command([NMCLI, 'c', 'show', uuid, ])
+            o, e, rc = run_command([NMCLI, 'c', 'show', uuid, ])
         except CommandException as e:
             # in case the connection disappears
             if e.rc == 10:
@@ -123,7 +151,7 @@ def connections():
                     uuid))
                 continue
             raise e
-        for l in o2:
+        for l in o:
             if (re.match('ipv4.method:', l) is not None):
                 tmap['ipv4_method'] = val(l)
             elif (re.match('connection.id:', l) is not None):
