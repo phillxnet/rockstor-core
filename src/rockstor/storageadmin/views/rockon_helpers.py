@@ -385,7 +385,7 @@ def dnet_create(network, aux_address=None, dgateway=None, host_binding=None,
         # run_command(list(DNET) + ['create', network, ])
         if update:
             logger.debug('A forced update of network connections was requested.')
-            NetworkMixin._refresh_connections()
+            # NetworkMixin._refresh_connections()
     else:
         logger.debug('the network {} was detected, so do NOT create it.'.format(network))
 

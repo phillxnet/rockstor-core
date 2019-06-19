@@ -288,7 +288,7 @@ class RockOnIdView(rfc.GenericView):
                                     dnet_create(network=net)
                                     # @todo: integrate the forced update of network connections
                                     #   into dnet_create() with an optional flag `update=True`
-                                    NetworkMixin._refresh_connections()
+                                    # NetworkMixin._refresh_connections()
                                 brco = BridgeConnection.objects.get(docker_name=net)
                                 co = DContainer.objects.get(rockon=rockon, name=c)
                                 logger.debug('The container ({}) is {}'.format(co.id, co.name))
