@@ -27,9 +27,10 @@ from appliances import (ApplianceListView, ApplianceDetailView)  # noqa F401
 from login import LoginView  # noqa F401
 from user import (UserListView, UserDetailView)  # noqa F401
 from dashboardconfig import DashboardConfigView  # noqa F401
-from network import (NetworkDeviceListView,  # noqa F401
-                     NetworkConnectionListView, NetworkStateView,
-                     NetworkConnectionDetailView)
+from storageadmin.views.network import (NetworkDeviceListView,
+                                        NetworkConnectionListView,
+                                        NetworkStateView,
+                                        NetworkConnectionDetailView)
 from pool_scrub import PoolScrubView  # noqa F401
 from setup_user import SetupUserView  # noqa F401
 from share_acl import ShareACLView  # noqa F401
