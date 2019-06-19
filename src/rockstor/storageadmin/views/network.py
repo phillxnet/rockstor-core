@@ -30,9 +30,9 @@ from storageadmin.serializers import (NetworkDeviceSerializer,
                                       NetworkConnectionSerializer)
 from storageadmin.views.rockon_helpers import (dnet_create, dnet_remove,
                                                probe_running_containers,
-                                               dnet_connect, dnet_disconnect,
-                                               docker_status)
-from system import network
+                                               dnet_connect, dnet_disconnect)
+from system.docker import docker_status
+import system.network as sysnet
 import rest_framework_custom as rfc
 
 import logging
@@ -128,7 +128,7 @@ class NetworkMixin(object):
     @transaction.atomic
     def _refresh_connections(cls):
         logger.debug('The function _refresh_connections has been called')
-        cmap = network.get_con_config(network.get_con_list())
+        cmap = sysnet.get_con_config(sysnet.get_con_list())
         defer_master_updates = []
         for nco in NetworkConnection.objects.all():
             if (nco.uuid not in cmap):
@@ -172,7 +172,7 @@ class NetworkMixin(object):
     @staticmethod
     @transaction.atomic
     def _refresh_devices():
-        dmap = network.get_dev_config(network.get_dev_list())
+        dmap = sysnet.get_dev_config(sysnet.get_dev_list())
 
         def update_connection(dconfig):
             if ('connection' in dconfig):
@@ -294,14 +294,14 @@ class NetworkConnectionListView(rfc.GenericView, NetworkMixin):
                                                       self.team_profiles)
                     handle_exception(Exception(e_msg), request)
                 self._validate_devices(devices, request)
-                network.new_team_connection(name, self.runners[team_profile],
+                sysnet.new_team_connection(name, self.runners[team_profile],
                                             devices, ipaddr, gateway,
                                             dns_servers, search_domains)
 
             elif (ctype == 'ethernet'):
                 device = request.data.get('device')
                 self._validate_devices([device], request, size=1)
-                network.new_ethernet_connection(name, device, ipaddr, gateway,
+                sysnet.new_ethernet_connection(name, device, ipaddr, gateway,
                                                 dns_servers, search_domains)
 
             elif (ctype == 'bond'):
@@ -312,7 +312,7 @@ class NetworkConnectionListView(rfc.GenericView, NetworkMixin):
                                                       self.bond_profiles)
                     handle_exception(Exception(e_msg), request)
                 self._validate_devices(devices, request)
-                network.new_bond_connection(name, bond_profile, devices,
+                sysnet.new_bond_connection(name, bond_profile, devices,
                                             ipaddr, gateway, dns_servers,
                                             search_domains)
 
@@ -380,7 +380,7 @@ class NetworkConnectionDetailView(rfc.GenericView, NetworkMixin):
             if (nco.ctype == 'ethernet'):
                 device = nco.networkdevice_set.first().name
                 self._delete_connection(nco)
-                network.new_ethernet_connection(nco.name, device, ipaddr,
+                sysnet.new_ethernet_connection(nco.name, device, ipaddr,
                                                 gateway, dns_servers,
                                                 search_domains, mtu)
             elif (nco.ctype == 'team'):
@@ -390,7 +390,7 @@ class NetworkConnectionDetailView(rfc.GenericView, NetworkMixin):
                     devices.append(child_nco.networkdevice_set.first().name)
 
                 self._delete_connection(nco)
-                network.new_team_connection(
+                sysnet.new_team_connection(
                     nco.name, self.runners[team_profile], devices, ipaddr,
                     gateway, dns_servers, search_domains, mtu)
             elif (ctype == 'docker'):
@@ -499,8 +499,8 @@ class NetworkConnectionDetailView(rfc.GenericView, NetworkMixin):
     def _delete_connection(nco):
         logger.debug('the _delete method was called')
         for mnco in nco.networkconnection_set.all():
-            network.delete_connection(mnco.uuid)
-        network.delete_connection(nco.uuid)
+            sysnet.delete_connection(mnco.uuid)
+        sysnet.delete_connection(nco.uuid)
         nco.delete()
 
     @transaction.atomic
@@ -549,9 +549,9 @@ class NetworkConnectionDetailView(rfc.GenericView, NetworkMixin):
                 # be brought up in order. eg: active-backup.
                 for mnco in nco.networkconnection_set.all().order_by('name'):
                     logger.debug('upping {} {}'.format(mnco.name, mnco.uuid))
-                    network.toggle_connection(mnco.uuid, switch)
+                    sysnet.toggle_connection(mnco.uuid, switch)
             else:
-                network.toggle_connection(nco.uuid, switch)
+                sysnet.toggle_connection(nco.uuid, switch)
             return Response(NetworkConnectionSerializer(nco).data)
 
 

@@ -22,7 +22,6 @@ from system.osi import run_command
 from django.conf import settings
 from django_ztask.decorators import task
 from cli.api_wrapper import APIWrapper
-from system.services import service_status
 from storageadmin.models import (RockOn, DContainer, DVolume, DPort,
                                  DCustomConfig, DContainerLink,
                                  ContainerOption, DContainerEnv,
@@ -31,7 +30,6 @@ from storageadmin.models import (RockOn, DContainer, DVolume, DPort,
 from fs.btrfs import mount_share
 from rockon_utils import container_status
 import logging
-import json
 
 DOCKER = '/usr/bin/docker'
 ROCKON_URL = 'https://localhost/api/rockons'
@@ -41,13 +39,6 @@ DNET = [DOCKER, 'network', ]
 
 logger = logging.getLogger(__name__)
 aw = APIWrapper()
-
-
-def docker_status():
-    o, e, rc = service_status('docker')
-    if (rc != 0):
-        return False
-    return True
 
 
 def rockon_status(name):
@@ -251,49 +242,15 @@ def envars(container):
     return var_list
 
 
-def dnets(id=None, type=None):
-    """
-    List the docker names of all docker networks.
-    :param id: string, used to test for network presence.
-    :param type: string, either 'custom' or 'builtin'
-    :return: list
-    """
-    cmd = list(DNET) + ['ls',
-                        # '--filter', 'type=custom',
-                        '--format', '{{.Name}}']
-    if id:
-        cmd.extend(['--filter', 'id={}'.format(id)])
-    if type is not None:
-        if (type == 'custom'):
-            cmd.extend((['--filter', 'type=custom']))
-        elif (type == 'builtin'):
-            cmd.extend((['--filter', 'type=builtin']))
-        else:
-            raise Exception('type must be custom or builtin')
-    o, e, rc = run_command(cmd)
-    return o[:-1]
-
-
-def dnet_inspect(dname):
-    """
-    This function takes the name of a docker network as argument
-    and returns a dict of its configuration.
-    :param dname: docker network name
-    :return: dict
-    """
-    cmd = list(DNET) + ['inspect', dname, '--format', '{{json .}}', ]
-    o,_,_ = run_command(cmd)
-    return json.loads(o[0])
-
-
 def probe_running_containers(container=None, network=None, all=False):
     """
     List docker containers.
-    :param container:
+    :param container: container name
     :param network:
     :param all:
     :return:
     """
+    # TODO: Consider moving to system.docker
     cmd = [DOCKER, 'ps', '--format', '{{.Names}}', ]
     running_filters = ['--filter', 'status=created',
                        '--filter', 'status=restarting',

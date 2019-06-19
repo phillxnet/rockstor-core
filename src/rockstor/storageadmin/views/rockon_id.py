@@ -26,10 +26,10 @@ from storageadmin.models import (RockOn, DContainer, DVolume, DContainerDevice,
 from storageadmin.serializers import RockOnSerializer
 import rest_framework_custom as rfc
 from storageadmin.util import handle_exception
-from rockon_helpers import (docker_status, start, stop, install, uninstall,
+from rockon_helpers import (start, stop, install, uninstall,
                             update, dnet_remove, dnet_create, dnet_disconnect)
 from system.services import superctl
-from network import NetworkMixin
+from system.docker import docker_status
 
 import logging
 logger = logging.getLogger(__name__)

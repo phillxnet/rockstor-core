@@ -28,7 +28,8 @@ from storageadmin.models import (RockOn, DImage, DContainer, DPort, DVolume,
 from storageadmin.serializers import RockOnSerializer
 from storageadmin.util import handle_exception
 import rest_framework_custom as rfc
-from rockon_helpers import (docker_status, rockon_status)
+from rockon_helpers import rockon_status
+from system.docker import docker_status
 from django_ztask.models import Task
 from django.conf import settings
 import pickle

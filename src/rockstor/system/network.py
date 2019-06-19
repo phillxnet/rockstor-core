@@ -22,8 +22,7 @@ import re
 
 from .exceptions import CommandException
 from .osi import run_command
-from storageadmin.views.rockon_helpers import (dnets, dnet_inspect, docker_status)
-
+from .docker import dnets, docker_status, dnet_inspect
 
 NMCLI = '/usr/bin/nmcli'
 DEFAULT_MTU = 1500
