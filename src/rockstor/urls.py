@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from django.conf.urls import patterns, include, url
+from django.conf.urls import include, url
 from storageadmin.views import (SetupUserView, LoginView, DashboardConfigView,
                                 NFSExportGroupListView,
                                 NFSExportGroupDetailView, SambaListView,
@@ -43,7 +43,7 @@ js_doc_root = os.path.join(
     os.path.dirname(__file__), '/templates/storageadmin/js'
 )
 
-urlpatterns = patterns(
+urlpatterns = [
     '',
     url(r'^$', 'storageadmin.views.home', name='home'),
     url(r'^login_page$', 'storageadmin.views.login_page'),
@@ -121,4 +121,4 @@ urlpatterns = patterns(
     # update subscription
     (r'^api/update-subscriptions',
      include('storageadmin.urls.update_subscription')),
-)
+]
