@@ -22,7 +22,6 @@ from django.conf import settings
 
 
 urlpatterns = [
-    "",
     # User configuration
     url(r"^$", UserListView.as_view()),
     url(r"(?P<username>%s)$" % settings.USERNAME_REGEX, UserDetailView.as_view()),

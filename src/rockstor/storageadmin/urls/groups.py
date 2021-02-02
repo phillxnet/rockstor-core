@@ -22,7 +22,6 @@ from django.conf import settings
 
 
 urlpatterns = [
-    "",
     # User configuration
     url(r"^$", GroupListView.as_view()),
     url(r"/(?P<groupname>%s)$" % settings.USERNAME_REGEX, GroupDetailView.as_view()),

@@ -35,7 +35,6 @@ from smart_manager.views import (
 
 
 urlpatterns = [
-    "",
     # Smart probes
     url(r"^$", SProbeView.as_view(), name="probe-view"),
     url(r"^metadata$", SProbeMetadataView.as_view(), name="probe-view"),

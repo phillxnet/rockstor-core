@@ -28,7 +28,6 @@ valid_commands = (
 )
 
 urlpatterns =[
-    "",
     url(r"(?P<command>%s)$" % valid_commands, CommandView.as_view(), name="user-view"),
     url(
         r"(?P<command>shutdown|suspend)/(?P<rtcepoch>\d+)$",

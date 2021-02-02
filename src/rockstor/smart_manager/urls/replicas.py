@@ -33,7 +33,6 @@ from smart_manager.views import (
 share_regex = settings.SHARE_REGEX
 
 urlpatterns = [
-    "",
     url(r"^$", ReplicaListView.as_view(), name="replica-view"),
     url(r"^(?P<rid>[0-9]+)$", ReplicaDetailView.as_view(), name="replica-view"),
     url(

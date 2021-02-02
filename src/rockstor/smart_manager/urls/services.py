@@ -43,7 +43,6 @@ from smart_manager.views import (
 command_regex = "config|start|stop"
 
 urlpatterns = [
-    "",
     # Services
     url(r"^$", BaseServiceView.as_view()),
     url(r"^nis$", NISServiceView.as_view()),

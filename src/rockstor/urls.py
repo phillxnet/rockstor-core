@@ -54,7 +54,6 @@ img_doc_root = os.path.join(os.path.dirname(__file__), "/templates/storageadmin/
 js_doc_root = os.path.join(os.path.dirname(__file__), "/templates/storageadmin/js")
 
 urlpatterns = [
-    "",
     url(r"^$", home, name="home"),
     url(r"^login_page$", login_page, name="login_page"),
     url(r"^login_submit$", login_submit, name="login_submit"),

@@ -33,7 +33,6 @@ snap_command = "clone|repclone"
 share_command = "rollback|clone"
 
 urlpatterns = [
-    "",
     url(r"^$", ShareListView.as_view(), name="share-view"),
     url(r"^/(?P<sid>\d+)$", ShareDetailView.as_view(), name="share-view"),
     url(r"^/(?P<sid>\d+)/(?P<command>force)$", ShareDetailView.as_view(),),

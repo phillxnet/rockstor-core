@@ -31,7 +31,6 @@ from storageadmin.views import (
 )
 
 urlpatterns = [
-    "",
     url(r"^$", RockOnView.as_view(),),
     url(r"^/volumes/(?P<rid>\d+)$", RockOnVolumeView.as_view(),),
     url(r"^/docker/containers/(?P<rid>\d+)$", RockOnContainerView.as_view(),),

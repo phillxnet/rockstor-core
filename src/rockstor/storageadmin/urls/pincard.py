@@ -20,5 +20,5 @@ from django.conf.urls import url
 from storageadmin.views import PincardView
 
 urlpatterns = [
-    "", url(r"^/(?P<command>create|reset)/(?P<user>\w+)$", PincardView.as_view(),)
+    url(r"^/(?P<command>create|reset)/(?P<user>\w+)$", PincardView.as_view(),)
 ]

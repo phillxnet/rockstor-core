@@ -20,7 +20,6 @@ from django.conf.urls import url
 from storageadmin.views import UpdateSubscriptionListView, UpdateSubscriptionDetailView
 
 urlpatterns = [
-    "",
     url(r"^$", UpdateSubscriptionListView.as_view()),
     url(r"^/(?P<id>\d+)$", UpdateSubscriptionDetailView.as_view()),
     url(r"^/(?P<command>.*)$", UpdateSubscriptionListView.as_view()),

@@ -25,7 +25,6 @@ from smart_manager.views import (
 )
 
 urlpatterns = [
-    "",
     url(r"^$", TaskSchedulerListView.as_view(),),
     url(r"^(?P<tdid>\d+)$", TaskSchedulerDetailView.as_view(),),
     url(r"^log$", TaskLogView.as_view(),),

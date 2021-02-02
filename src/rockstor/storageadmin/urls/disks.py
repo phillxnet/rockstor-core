@@ -22,7 +22,6 @@ from storageadmin.views import DiskListView, DiskDetailView, DiskSMARTDetailView
 disk_regex = "[A-Za-z0-9]+[A-Za-z0-9:_-]*"
 
 urlpatterns = [
-    "",
     url(r"^$", DiskListView.as_view()),
     url(r"^/smart/(?P<command>.+)/(?P<did>\d+)$", DiskSMARTDetailView.as_view()),
     url(r"^/(?P<command>scan)$", DiskListView.as_view()),

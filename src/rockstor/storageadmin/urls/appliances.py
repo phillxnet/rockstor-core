@@ -20,7 +20,6 @@ from django.conf.urls import url
 from storageadmin.views import ApplianceListView, ApplianceDetailView
 
 urlpatterns = [
-    "",
     url(r"^$", ApplianceListView.as_view()),
     url(r"^/(?P<appid>\d+)$", ApplianceDetailView.as_view()),
 ]

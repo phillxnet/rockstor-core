@@ -28,7 +28,6 @@ from storageadmin.views import (
 
 
 urlpatterns = [
-    "",
     url(r"^$", PoolListView.as_view(), name="pool-view"),
     url(r"^/usage_bound$", get_usage_bound),
     url(r"^/(?P<pid>\d+)$", PoolDetailView.as_view()),
