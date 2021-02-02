@@ -16,12 +16,12 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from storageadmin.views import UpdateSubscriptionListView, UpdateSubscriptionDetailView
 
-urlpatterns = patterns(
+urlpatterns = [
     "",
     url(r"^$", UpdateSubscriptionListView.as_view()),
     url(r"^/(?P<id>\d+)$", UpdateSubscriptionDetailView.as_view()),
     url(r"^/(?P<command>.*)$", UpdateSubscriptionListView.as_view()),
-)
+]

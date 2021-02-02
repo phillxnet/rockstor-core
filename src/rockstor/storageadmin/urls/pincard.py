@@ -16,9 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from storageadmin.views import PincardView
 
-urlpatterns = patterns(
+urlpatterns = [
     "", url(r"^/(?P<command>create|reset)/(?P<user>\w+)$", PincardView.as_view(),)
-)
+]

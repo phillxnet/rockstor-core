@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from storageadmin.views import (
     RockOnView,
     RockOnIdView,
@@ -30,7 +30,7 @@ from storageadmin.views import (
     RockOnNetworkView,
 )
 
-urlpatterns = patterns(
+urlpatterns = [
     "",
     url(r"^$", RockOnView.as_view(),),
     url(r"^/volumes/(?P<rid>\d+)$", RockOnVolumeView.as_view(),),
@@ -47,4 +47,4 @@ urlpatterns = patterns(
         r"^/(?P<rid>\d+)/(?P<command>install|uninstall|update|start|stop|state_update|status_update)$",  # noqa E501
         RockOnIdView.as_view(),
     ),
-)
+]

@@ -16,14 +16,14 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from storageadmin.views import GroupListView, GroupDetailView
 from django.conf import settings
 
 
-urlpatterns = patterns(
+urlpatterns = [
     "",
     # User configuration
     url(r"^$", GroupListView.as_view()),
     url(r"/(?P<groupname>%s)$" % settings.USERNAME_REGEX, GroupDetailView.as_view()),
-)
+]

@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from smart_manager.views import (
     ActiveDirectoryServiceView,
     BaseServiceView,
@@ -42,7 +42,7 @@ from smart_manager.views import (
 
 command_regex = "config|start|stop"
 
-urlpatterns = patterns(
+urlpatterns = [
     "",
     # Services
     url(r"^$", BaseServiceView.as_view()),
@@ -105,4 +105,4 @@ urlpatterns = patterns(
     ),
     url(r"^rockstor$", RockstorServiceView.as_view()),
     url(r"^rockstor/(?P<command>%s)$" % command_regex, RockstorServiceView.as_view()),
-)
+]

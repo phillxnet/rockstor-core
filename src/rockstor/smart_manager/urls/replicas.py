@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from django.conf import settings
 from smart_manager.views import (
     ReplicaListView,
@@ -32,7 +32,7 @@ from smart_manager.views import (
 
 share_regex = settings.SHARE_REGEX
 
-urlpatterns = patterns(
+urlpatterns = [
     "",
     url(r"^$", ReplicaListView.as_view(), name="replica-view"),
     url(r"^(?P<rid>[0-9]+)$", ReplicaDetailView.as_view(), name="replica-view"),
@@ -59,4 +59,4 @@ urlpatterns = patterns(
     url(r"^rtrail/rshare/(?P<rid>[0-9]+)$", ReceiveTrailListView.as_view()),
     url(r"^rtrail/(?P<rtid>[0-9]+)", ReceiveTrailDetailView.as_view()),
     url(r"^rpool/(?P<auuid>.*)$", ReceiverPoolListView.as_view()),
-)
+]

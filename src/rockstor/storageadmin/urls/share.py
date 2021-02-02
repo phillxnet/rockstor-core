@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from storageadmin.views import (
     ShareListView,
     ShareDetailView,
@@ -32,7 +32,7 @@ snap_regex = share_regex
 snap_command = "clone|repclone"
 share_command = "rollback|clone"
 
-urlpatterns = patterns(
+urlpatterns = [
     "",
     url(r"^$", ShareListView.as_view(), name="share-view"),
     url(r"^/(?P<sid>\d+)$", ShareDetailView.as_view(), name="share-view"),
@@ -52,4 +52,4 @@ urlpatterns = patterns(
     ),
     url(r"^/(?P<sid>\d+)/acl$", ShareACLView.as_view(), name="acl-view"),
     url(r"^/(?P<sid>\d+)/(?P<command>%s)$" % share_command, ShareCommandView.as_view()),
-)
+]

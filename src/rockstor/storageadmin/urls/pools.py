@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from storageadmin.views import (
     PoolListView,
     PoolDetailView,
@@ -27,7 +27,7 @@ from storageadmin.views import (
 )
 
 
-urlpatterns = patterns(
+urlpatterns = [
     "",
     url(r"^$", PoolListView.as_view(), name="pool-view"),
     url(r"^/usage_bound$", get_usage_bound),
@@ -38,4 +38,4 @@ urlpatterns = patterns(
     url(r"^/(?P<pid>\d+)/scrub$", PoolScrubView.as_view(),),
     url(r"^/(?P<pid>\d+)/scrub/(?P<command>.*)$", PoolScrubView.as_view(),),
     url(r"^/(?P<pid>\d+)/(?P<command>.*)$", PoolDetailView.as_view(),),
-)
+]

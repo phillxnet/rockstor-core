@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from smart_manager.views import (
     SProbeView,
     MemInfoView,
@@ -34,7 +34,7 @@ from smart_manager.views import (
 )
 
 
-urlpatterns = patterns(
+urlpatterns = [
     "",
     # Smart probes
     url(r"^$", SProbeView.as_view(), name="probe-view"),
@@ -106,4 +106,4 @@ urlpatterns = patterns(
         NFSDUidGidDistributionView.as_view(),
         name="nfsuidgid-view",
     ),
-)
+]
