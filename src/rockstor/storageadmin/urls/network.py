@@ -27,12 +27,12 @@ from storageadmin.views import (
 
 urlpatterns = [
     url(r"^$", NetworkStateView.as_view()),
-    url(r"^/connections$", NetworkConnectionListView.as_view()),
-    url(r"^/connections/(?P<id>\d+)$", NetworkConnectionDetailView.as_view()),
+    url(r"^connections$", NetworkConnectionListView.as_view()),
+    url(r"^connections/(?P<id>\d+)$", NetworkConnectionDetailView.as_view()),
     url(
-        r"^/connections/(?P<id>\d+)/(?P<switch>up|down|reload)$",
+        r"^connections/(?P<id>\d+)/(?P<switch>up|down|reload)$",
         NetworkConnectionDetailView.as_view(),
     ),
-    url(r"^/devices$", NetworkDeviceListView.as_view()),
-    url(r"^/refresh$", NetworkStateView.as_view()),
+    url(r"^devices$", NetworkDeviceListView.as_view()),
+    url(r"^refresh$", NetworkStateView.as_view()),
 ]

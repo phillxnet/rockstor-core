@@ -23,8 +23,8 @@ disk_regex = "[A-Za-z0-9]+[A-Za-z0-9:_-]*"
 
 urlpatterns = [
     url(r"^$", DiskListView.as_view()),
-    url(r"^/smart/(?P<command>.+)/(?P<did>\d+)$", DiskSMARTDetailView.as_view()),
-    url(r"^/(?P<command>scan)$", DiskListView.as_view()),
-    url(r"^/(?P<did>\d+)$", DiskDetailView.as_view()),
-    url(r"^/(?P<did>\d+)/(?P<command>.+)$", DiskDetailView.as_view()),
+    url(r"^smart/(?P<command>.+)/(?P<did>\d+)$", DiskSMARTDetailView.as_view()),
+    url(r"^(?P<command>scan)$", DiskListView.as_view()),
+    url(r"^(?P<did>\d+)$", DiskDetailView.as_view()),
+    url(r"^(?P<did>\d+)/(?P<command>.+)$", DiskDetailView.as_view()),
 ]
