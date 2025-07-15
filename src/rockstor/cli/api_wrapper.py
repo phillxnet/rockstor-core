@@ -67,7 +67,7 @@ class APIWrapper(object):
                 data=token_request_data,
                 headers=auth_headers,
                 verify=False,
-                timeout=2,
+                timeout=(1, 4),
             )
             content = json.loads(response.content.decode("utf-8"))
             self.access_token = content["access_token"]
