@@ -87,19 +87,12 @@ class SnapshotView(NFSExportMixin, rfc.GenericView):
         export_pt = snap_mnt_pt.replace(settings.MNT_PT, settings.NFS_EXPORT_ROOT)
         if on:
             mount_snap(share, snap_name, snap_qgroup)
-
-            if NFSExport.objects.filter(share=share).exists():
-                se = NFSExport.objects.filter(share=share)[0]
-                export_group = NFSExportGroup(
-                    host_str=se.export_group.host_str, nohide=True
-                )
-                export_group.save()
-                export = NFSExport(
-                    share=share, export_group=export_group, mount=export_pt
-                )
-                export.full_clean()
-                export.save()
-                cur_exports.append(export)
+            ########################################################
+            # #2007 #1879   For many years the operation of NFS shares has created an NFS export for every snapshot
+            # This has led to numerous bugs with NFS
+            # To simplfy NFS operation this facility has been removed and now NFS behave like SFTP and Samba shares
+            # with an export for only the top level share with snapshots appearing as folders in the share.
+            #########################################################
         else:
             for mnt in (snap_mnt_pt, export_pt):
                 try:
