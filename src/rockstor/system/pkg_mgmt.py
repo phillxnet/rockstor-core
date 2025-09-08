@@ -496,7 +496,10 @@ def update_run(subscription=None, update_all_other=False):
     distro_id = distro.id()
     pkg_refresh_cmd = "{} --non-interactive refresh\n".format(ZYPPER)
     # Set package manager rockstor install/update command according to distro.
-    pkg_in_up_rockstor = "{} --non-interactive install rockstor\n".format(ZYPPER)
+    # TODO: Consider more subtlety than "--force-resolution" in the following:
+    pkg_in_up_rockstor = (
+        "{} --non-interactive install --force-resolution rockstor\n".format(ZYPPER)
+    )
     pkg_update_all = ""
     # Accommodate for distro 1.7.0 onwards reporting "opensuse" for id.
     if distro_id == "opensuse-leap" or distro_id == "opensuse":
