@@ -17,7 +17,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from rest_framework.response import Response
 from storageadmin.util import handle_exception
-from system.services import superctl
+from system.services import systemctl
 from django.db import transaction
 from smart_manager.views.base_service import BaseServiceDetailView
 from smart_manager.models import Service
@@ -34,7 +34,7 @@ class DataCollectorServiceView(BaseServiceDetailView):
         """
         execute a command on the service
         """
-        service = Service.objects.get(name="data-collector")
+        service = Service.objects.get(name="rockstor-collector")
         if command == "config":
             # nothing to really configure atm. just save the model
             try:
@@ -47,7 +47,7 @@ class DataCollectorServiceView(BaseServiceDetailView):
 
         else:
             try:
-                superctl(service.name, command)
+                systemctl("rockstor-collector", command)
             except Exception as e:
                 logger.exception(e)
                 e_msg = "Failed to %s Data collector due to a system error." % command

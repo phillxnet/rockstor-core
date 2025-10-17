@@ -96,7 +96,10 @@ SYSTEMD_OVERRIDE_DIR = "/etc/systemd/system"
 ROCKSTOR_SYSTEMD_SERVICES = [
     "rockstor-build.service",  # Build/Rebuild .venv & jslibs, init `pass`.
     "rockstor-pre.service",  # Loads us (initrock.py).
-    "rockstor.service",
+    "rockstor.service", # Server Gateway Interface (SGI) startup
+    "rockstor-collector.service", # Log collector
+    "rockstor-replication.service", # Replication daemon
+    "rockstor-scheduling.service", # scheduling service
     "rockstor-bootstrap.service",
 ]
 # These services are added programatically outside initrock (rockstor-pre.service)
@@ -399,7 +402,9 @@ def install_or_update_systemd_service(
             os.mkdir(target_directory)
         shutil.copyfile(source_with_path, target_with_path)
         logger.info("{} updated.".format(target_with_path))
-        run_command([SYSTEMCTL, "enable", service_name])
+        if service_name == "rockstor-bootstrap":
+            logger.info("Enabling rockstor-bootstrap.service")
+            run_command([SYSTEMCTL, "enable", service_name])
         return True
     logger.info("{} up-to-date.".format(target_with_path))
     return False
