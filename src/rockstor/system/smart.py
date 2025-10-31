@@ -35,6 +35,8 @@ CAT = "/usr/bin/cat"
 # default setting = False
 TESTMODE = False
 
+# Dictionary to track nvme devices that failed smartctl --all with errors in function available()
+_failed_devices = {}
 
 def info(device, custom_options="", test_mode=TESTMODE):
     """
@@ -55,12 +57,12 @@ def info(device, custom_options="", test_mode=TESTMODE):
     # Note the "|" char allows for defining alternative matches ie A or B
     matches = (
         "Model Family:|Vendor:",
-        "Device Model:|Product:",
+        "Device Model:|Product:|Model Number:",
         "Serial Number:|Serial number:",
-        "LU WWN Device Id:|Logical Unit id:",
-        "Firmware Version:|Revision",
-        "User Capacity:",
-        "Sector Sizes?:|Logical block size:",
+        "LU WWN Device Id:|Logical Unit id:|PCI Vendor/Subsystem ID:",
+        "Firmware Version:|Revision:",
+        "User Capacity:|Total NVM Capacity:",
+        "Sector Sizes?:|Logical block size:|.*Formatted LBA Size:",
         "Rotation Rate:",
         "Device is:",
         "ATA Version is:",
@@ -167,6 +169,10 @@ def capabilities(device, custom_options="", test_mode=TESTMODE):
                 else:
                     prev_line = o[j].strip()
             break
+    if "nvme" in device:     #Spoof the result for nvme devices since smartctl does not report self test capabilities for nvme devices.
+        cap_d= {}
+        cap_d["Short self-test routine recommended polling time"] = ["", "unknown duration"]
+        cap_d["Extended self-test routine recommended polling time"] = [" ", "unknown duration"]
     return cap_d
 
 
@@ -215,7 +221,7 @@ def error_logs(device, custom_options="", test_mode=TESTMODE):
     summary = {}
     log_l = []
     for i in range(len(o)):
-        if re.match("=== START OF READ SMART DATA SECTION ===", o[i]) is not None:
+        if re.match("=== START OF READ SMART DATA SECTION ===|=== START OF SMART DATA SECTION ===", o[i]) is not None:
             err_num = None
             lifetime_hours = None
             state = None
@@ -286,17 +292,23 @@ def test_logs(device, custom_options="", test_mode=TESTMODE):
     test_d = {}
     log_l = []
     for i in range(len(o)):
-        if re.match("SMART Self-test log structure revision number", o[i]) is not None:
+        if re.match("SMART Self-test log structure revision number|Self-test status", o[i]) is not None:
             log_l.append(o[i])
             if len(o) > (i + 1):
-                if re.match("Num  Test_Description    Status", o[i + 1]) is not None:
+                if re.match("Num  Test_Description    Status|Num  Test_Description  Status", o[i + 1]) is not None:
                     for j in range(i + 2, len(o)):
-                        if re.match("# ", o[j]) is not None:
-                            # slit the line into fields using 2 or more spaces
-                            fields = re.split(r"\s\s+", o[j].strip()[2:])
+                        if re.match("# |\\s\\d", o[j]) is not None:
+                            # split the line into fields using 2 or more spaces
+                            if "nvme" in device:
+                                fields = re.split(r"\s\s+", o[j])
+                                del fields[6:9]
+                                fields.insert(3,"100")  #insert zero as % remaining
+                                test_d[fields[0]] = fields[1:]
+                            else:
+                                fields = re.split(r"\s\s+", o[j].strip()[2:]) 
                             # Some Seagate drives add an ongoing test progress
                             # report to the top of this log but there is then
-                            # only one space delimiter and we loose a column.
+                            # only one space delimiter and we lose a column.
                             if len(fields) == 5:  # it's normally 6 fields
                                 # we are missing a column (fast check)
                                 if re.match("Self-test routine in progress", fields[2]):
@@ -310,12 +322,12 @@ def test_logs(device, custom_options="", test_mode=TESTMODE):
                                     fields[3] = status_fields[-1]
                                     # Remove our % remaining in status field.
                                     fields[2] = " ".join(status_fields[:-1])
-                            # Remove the % char from this columns value
-                            # and change % Remaining to % Completed.
-                            fields[3] = 100 - int(fields[3][:-1])
-                            test_d[fields[0]] = fields[1:]
+                                    # Remove the % char from this columns value
+                                    # and change % Remaining to % Completed.
+                                    fields[3] = 100 - int(fields[3][:-1])
+                                    test_d[fields[0]] = fields[1:]
                         else:
-                            log_l.append(o[j])
+                            log_l.append(o[j])                      
     return (test_d, log_l)
 
 
@@ -333,19 +345,57 @@ def available(device, custom_options="", test_mode=TESTMODE):
     :return: available (boolean), enabled (boolean)
     """
     if not test_mode:
-        o, e, rc = run_command(
-            [SMART, "--info"] + get_dev_options(device, custom_options)
-        )
+        """
+        Because Smart support is part of the nvme standard and smarctl --info
+        does not explicitly state if smart is supported or not, then smartctl --all
+        is used instead, and the presence of the smart status section is used to determine
+        if smart is indeed available. Some devices such as usb connected ssd may not give
+        this section
+        """
+        if "nvme" in device:
+            if  device in _failed_devices:   #smartctl has already failed before, so return without running it again
+                #logger.info("Device previously errored command smartctl --all %s",  device) #repeats every 30 secs unless disabled
+                return 0, 0  #Available and Enabled both False 
+            o, e, rc = run_command(
+                [SMART, "--all"] + get_dev_options(device, custom_options)
+            )
+            """
+            Some nvme devices return a result code with bit 2 set  to smartctl --all if smartmontools is lower than rev 7.5
+            For these devices mark S.M.A.R.T as unavailable by defining  a dictionary variable to indicate it has already previously errored.
+            """
+            if rc & 4: #smartctl command errored with bit 2 set. (command failed).  Suggest user upgrade smartmontools.    
+                _failed_devices[device] = True  # Mark device as failed
+                logger.info("New error code from command smartctl --all %s. It is recommended to upgrade smartmon tools to >= 7.5"  ,  device)  
+                e_msg = (
+                    f"smartctl returned an error of {rc} (Command Failed). This has been associated with nvme drives where "
+                    "smartmontools is at a revision below 7.5. It is recommended to upgrade smartmon tools "
+                    " using an official or community package. In the meantime S.M.A.R.T monitoring will be unavailable for the"
+                    " device  {device}."
+                )
+                email_root("S.M.A.R.T error", e_msg)
+                a = False
+                e = False
+                return a, e     
+        else:
+            o, e, rc = run_command(
+                [SMART, "--info"] + get_dev_options(device, custom_options)
+            )
     else:  # we are testing so use a smartctl --info file dump instead
         o, e, rc = run_command([CAT, "/root/smartdumps/smart--info.out"])
     a = False
     e = False
-    for i in o:
-        # N.B. .* in pattern match to allow for multiple spaces
-        if re.match("SMART support is:.* Available", i) is not None:
-            a = True
-        if re.match("SMART support is:.* Enabled", i) is not None:
-            e = True
+    if "nvme" in device:
+        for i in o:
+            if re.match("SMART overall-health self-assessment", i) is not None:
+                a = True
+                e = True
+    else:
+        for i in o:
+            # N.B. .* in pattern match to allow for multiple spaces
+            if re.match("SMART support is:.* Available", i) is not None:
+                a = True
+            if re.match("SMART support is:.* Enabled", i) is not None:
+                e = True
     return a, e
 
 
