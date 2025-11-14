@@ -14,7 +14,6 @@ General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
-import crypt
 import logging
 import os
 import pwd
@@ -39,6 +38,8 @@ GROUPADD = "/usr/sbin/groupadd"
 USERDEL = "/usr/sbin/userdel"
 GROUPDEL = "/usr/sbin/groupdel"
 USERMOD = "/usr/sbin/usermod"
+MKPASSWD = "/usr/bin/mkpasswd"
+XARGS = "/usr/bin/xargs"
 SMBPASSWD = "/usr/bin/smbpasswd"
 CHOWN = "/usr/bin/chown"
 
@@ -161,35 +162,29 @@ def get_epasswd(username):
 
 
 def usermod(username, passwd):
-    # TODO: 'salt = crypt.mksalt()' # Python 3.3 onwards provides system best.
-    # Salt starting "$6$" & of 19 chars signifies SHA-512 current system best.
-    # Salt must contain only [./a-zA-Z0-9] chars (bar first 3 if len > 2)
-    # salt_header = "$6$"  # SHA-512
-    # rnd = random.SystemRandom()
-    # salt = "".join(
-    #     [rnd.choice(string.ascii_letters + string.digits + "./") for _ in range(16)]
-    # )
-    # crypted_passwd = crypt.crypt(passwd.encode("utf8"), salt_header + salt)
-    salt = crypt.mksalt()
-    crypted_passwd = crypt.crypt(passwd, salt)
-    cmd: list[str] = [USERMOD, "-p", crypted_passwd, username]
-    out, err, rc = run_command(cmd, log=True)
-    # p = subprocess.Popen(
-    #     cmd,
-    #     shell=False,
-    #     stdout=subprocess.PIPE,
-    #     stderr=subprocess.PIPE,
-    #     stdin=subprocess.PIPE,
-    # )
-    # out, err = p.communicate(input=None)
-    # rc = p.returncode
-    # if rc != 0:
-    #     raise CommandException(cmd, out, err, rc)
+    """
+    Encrypt given 'passwd' to system defaults via `mkpasswd`,
+    and pass to `usermod` for given 'username'.
+    I.e. akin to: `mkpasswd | xargs -I % usermod -p % username` with passwd via stdin.
+    This approach is to avoids passwd, and its hash, being exposed as command arguments.
+    """
+    # Yescrypt, gost-yescrypt, scrypt, and bcrypt methods are available;
+    # but sha512crypt "$6$..." mimics default CLI `passwd` use re /etc/shadow.
+    cmd: list[str] = [MKPASSWD, "-m", "sha512crypt"]  # passwd passed via stdin pipe.
+    pstr = f"{passwd}\n"  # Response to "Password:" stdout via stdin pipe.
+    # Popen rather than subprocess.run to enable Pipe transfer of plain text password.
+    out, err, rc = run_command(cmd, log=True, pinput=pstr, raw=True, timeout=1)
+    logger.info(f"Command ({MKPASSWD}) run for username: ({username}).")
+    crypted_passwd: str | None = out.strip()  # remove "/n" from raw output.
+    cmd: list[str] = [XARGS, "-I", "%", USERMOD, "-p", "%", username]
+    out, err, rc = run_command(cmd, log=True, pinput=crypted_passwd)
+    logger.info(f"Command ({USERMOD}) run for username: ({username}).")
     return out, err, rc
 
 
 def smbpasswd(username, passwd):
     cmd = [SMBPASSWD, "-s", "-a", username]
+    # TODO: Use run_command() with pinput parameter: see usermod().
     p = Popen(
         cmd,
         shell=False,
@@ -202,7 +197,7 @@ def smbpasswd(username, passwd):
     rc = p.returncode
     if rc != 0:
         raise CommandException(cmd, out, err, rc)
-    logger.info(f"Command (smbpasswd -s -a) run for username: ({username}).")
+    logger.info(f"Command ({SMBPASSWD} -s -a) run for username: ({username}).")
     return out, err, rc
 
 

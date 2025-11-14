@@ -249,6 +249,7 @@ def run_command(
     log: bool = False,
     pinput: AnyStr | None = None,
     raw: bool = False,
+    timeout: int | None = None,
 ) -> (list[str] | str, list[str], int):
     try:
         # We force run_command to always use en_US
@@ -269,7 +270,12 @@ def run_command(
             env=fake_env,
             universal_newlines=True,  # 3.7 adds text parameter universal_newlines alias
         )
-        out, err = p.communicate(input=pinput)
+        try:
+            out, err = p.communicate(input=pinput, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            logger.error(f"Timeout running command ({cmd}).")
+            p.kill()  # Because timeout does not kill the child process.
+            out, err = p.communicate()
         # raw=True allows parsing of a JSON output directly, for instance
         if not raw:
             out = out.split("\n")
