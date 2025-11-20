@@ -23,13 +23,12 @@ import re
 import shutil
 import signal
 import stat
-import subprocess  # TODO: consider drop in replacement of subprocess32 module
+import subprocess
 import time
 import uuid
 from socket import inet_ntoa
 from struct import pack
 from tempfile import mkstemp
-from distutils.util import strtobool
 from typing import AnyStr, IO
 
 from django.conf import settings
@@ -2324,18 +2323,21 @@ def systemd_name_escape(original_sting, template=""):
         return ""
 
 
-def to_boolean(proposed_boolean):
-    """Wrapper around distutils.util.strtobool (Python 2.7 and 3) to convert if needed
-    a string representation of a boolean: e.g "y", "yes", "t", "true", "on", and "1" to
-    True similarly for False string values. Raises ValueError if value is otherwise.
-    Note that strtobool returns binary but we require True or False Boolean type.
+def to_boolean(proposed_boolean: bool | str) -> bool:
+    """
+    Return a boolean type as-is, or if passed a string representation of the same;
+    e.g "y", "yes", "t", "true", "on", and "1", or the false counterparts, the
+    relevant boolean value.
+    Raises ValueError otherwise. Note type hinting on passed value.
     N.B. For historical reasons Python Bool is subtype of integer (0, 1).
-    Python 2: use as per Python 3.
-    Python 3: https://docs.python.org/3/distutils/apiref.html#distutils.util.strtobool
     :param proposed_boolean: Likely a string but may already be a Boolean type.
-    :return: proposed_boolean if proved to be of type Boolean or bool(strtobool(input)).
+    :return: proposed_boolean if of type Boolean, or bool counterpart of str if known.
     """
     if isinstance(proposed_boolean, bool):
         return proposed_boolean
-    else:
-        return bool(strtobool(proposed_boolean))
+    if isinstance(proposed_boolean, str):
+        if proposed_boolean in ["y", "yes", "t", "true", "on", "1"]:
+            return True
+        if proposed_boolean in ["n", "no", "f", "false", "off", "0"]:
+            return False
+    raise ValueError
