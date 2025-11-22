@@ -955,7 +955,9 @@ class SambaShareAdmin(admin.ModelAdmin):
     list_display = [
         "path",
         "comment",
-        "admin_users",
+        # (admin.E109) The value of 'list_display[2]' must not be a many-to-many field
+        # or a reverse foreign key.
+        # "admin_users",
         "browsable",
         "read_only",
         "guest_ok",

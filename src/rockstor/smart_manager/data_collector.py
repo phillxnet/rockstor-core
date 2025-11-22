@@ -56,9 +56,8 @@ from system.pinmanager import (
 )
 
 from system.osi import uptime, kernel_info, get_byid_name_map, run_command  # noqa E402
-from datetime import datetime, timedelta  # noqa E402
+from datetime import datetime, timedelta, timezone  # noqa E402
 import time  # noqa E402
-from django.utils.timezone import utc  # noqa E402
 from storageadmin.models import Disk, Pool  # noqa E402
 from smart_manager.models import Service  # noqa E402
 from system.services import service_status  # noqa E402
@@ -671,7 +670,7 @@ class DisksWidgetNamespace(RockstorIO):
                             "ms_ios": data[9],
                             "weighted_ios": data[10],
                             "ts": str(
-                                datetime.utcnow().replace(tzinfo=utc).isoformat()
+                                datetime.now(timezone.utc).isoformat()
                             ),  # noqa E501
                         }
                     )
@@ -710,7 +709,7 @@ class CPUWidgetNamespace(RockstorIO):
             cpu_stats = {}
             cpu_stats["results"] = []
             vals = psutil.cpu_times_percent(percpu=True)
-            ts = datetime.utcnow().replace(tzinfo=utc).isoformat()
+            ts = datetime.now(timezone.utc).isoformat()
             for i, val in enumerate(vals):
                 name = "cpu%d" % i
                 cpu_stats["results"].append(
@@ -758,7 +757,7 @@ class NetworkWidgetNamespace(RockstorIO):
                     if fields[0][:-1] not in interfaces:
                         continue
                     cur_stats[fields[0][:-1]] = fields[1:]
-            ts = datetime.utcnow().replace(tzinfo=utc).isoformat()
+            ts = datetime.now(timezone.utc).isoformat()
             if isinstance(prev_stats, dict):
                 results = []
                 for interface in cur_stats.keys():
@@ -861,7 +860,7 @@ class MemoryWidgetNamespace(RockstorIO):
                     elif re.match("Dirty:", l) is not None:
                         dirty = int(l.split()[1])
                         break  # no need to look at lines after dirty.
-            ts = datetime.utcnow().replace(tzinfo=utc).isoformat()
+            ts = datetime.now(timezone.utc).isoformat()
             self.emit(
                 "memory",
                 {
