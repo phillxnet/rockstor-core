@@ -29,12 +29,16 @@ logger = logging.getLogger(__name__)
 
 
 class ReplicationServiceView(BaseServiceDetailView):
+    # TODO: https://github.com/rockstor/rockstor-core/issues/3037
+    service_name = "replication"
+    systemd_name = "rockstor-replication"
+
     @transaction.atomic
     def post(self, request, command):
         """
         execute a command on the service
         """
-        service = Service.objects.get(name="replication")
+        service = Service.objects.get(name=self.service_name)
         if command == "config":
             try:
                 config = request.data["config"]
@@ -78,7 +82,8 @@ class ReplicationServiceView(BaseServiceDetailView):
                 )
                 handle_exception(Exception(e_msg), request)
         try:
-            systemctl("rockstor-replication", command)
+            # Expecting command = "start" or "stop" at this point.
+            self._switch(command)
             return Response()
         except Exception as e:
             e_msg = "Failed to %s Replication due to an error: %s" % (
@@ -86,3 +91,12 @@ class ReplicationServiceView(BaseServiceDetailView):
                 e.__str__(),
             )
             handle_exception(Exception(e_msg), request)
+
+    @classmethod
+    def _switch(cls, switch):
+        if switch == "start":
+            systemctl(cls.systemd_name, "enable")
+            systemctl(cls.systemd_name, "start")
+        else:
+            systemctl(cls.systemd_name, "disable")
+            systemctl(cls.systemd_name, "stop")
