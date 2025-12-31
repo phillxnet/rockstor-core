@@ -560,7 +560,7 @@ def zypper_killed_cleanup():
     )
 
 
-def pkg_updates_info(max_wait: int = 15) -> typing.List[dict[str:str]]:
+def pkg_updates_info(max_wait: int = 40) -> typing.List[dict[str:str]]:
     """
     Fetch info on installable updates across all repos via zypper xml output call.
     Resolves as per 'zypper up' excluding packages with dependency problems.
