@@ -531,6 +531,35 @@ def update_run(subscription=None, update_all_other=False):
     return out, err, rc
 
 
+def zypper_killed_cleanup():
+    """
+    Zypper, post subprocess.run time-outs / forced process terminations, leaves orphaned
+    'gpg-agent --homedir /var/tmp/zypp.*' processes concerned with repo key management.
+    Using 'gpgconf --kill gpg-agent' often fails on these custom --homedir instances;
+    hence the use here of `pkill gpg-agent`. We also tend to the long-standing zypper
+    habit of /var/temp/zypp.* dir spamming.
+    The 'gpg-agent' is a requirement of gnupg 2, and is re-invoked when needed.
+    """
+    # See: https://www.gnupg.org/documentation/manuals/gnupg/Agent-Signals.html
+    # pkill (procps package) defaults to SIGTERM
+    out, err, rc = run_command(
+        ["pkill -f 'gpg-agent --homedir /var/tmp/zypp'"], shell=True, throw=False
+    )
+    match rc:
+        case 0:
+            logger.info(
+                "Killed related gpg-agents post zypper process timeout/termination."
+            )
+        case 1:
+            logger.info("No zypper related gpg-agents found or successfully signalled.")
+        case _:
+            logger.error(f"pkill error: ({err}), out: ({out}).")
+    logger.info(f"Removing zypper /var/tmp/zypp.* directory spamming artifacts.")
+    run_command(
+        ["/usr/bin/rm --recursive --force /var/tmp/zypp.*"], shell=True, throw=False
+    )
+
+
 def pkg_updates_info(max_wait: int = 15) -> typing.List[dict[str:str]]:
     """
     Fetch info on installable updates across all repos via zypper xml output call.
@@ -575,7 +604,9 @@ def pkg_updates_info(max_wait: int = 15) -> typing.List[dict[str:str]]:
                 logger.error(f"Error fetching updates: {e}")
             return updates_info
     except TimeoutExpired as e:
-        logger.error(f"Consider applying updates to reduce backlog: {e}")
+        logger.warning(f"Consider applying updates to reduce backlog: {e}")
+        # subprocess.run first kills zypper on timeout before we receive this exception.
+        zypper_killed_cleanup()
         return updates_info
     if not stdout_value:
         if isinstance(zypp_run, subprocess.CompletedProcess):
