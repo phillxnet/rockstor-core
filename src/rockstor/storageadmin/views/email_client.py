@@ -19,7 +19,6 @@ import os
 import re
 import json
 import stat
-import distro
 from rest_framework.response import Response
 from django.db import transaction
 from storageadmin.models import EmailClient, Appliance
@@ -46,11 +45,13 @@ SYSCONFIG_MAIL = "/etc/sysconfig/mail"
 ROOT_FORWARD = "/root/.forward"
 GENERIC = "/etc/postfix/generic"
 
-# List of our used config options within main.cf; used to remove prior entries
+# List of config options within main.cf; used to remove prior entries
 # to avoid log warnings of "... overriding earlier entry: X"
 MAIN_CF_OPTIONS = [
     "relayhost",
-    "smtp_use_tls",
+    "smtp_use_tls",  # deprecated by smtp_tls_security_level
+    "smtp_enforce_tls",  # deprecated by smtp_tls_security_level
+    "smtp_tls_security_level",
     "smtp_sasl_auth_enable",
     "smtp_sasl_password_maps",
     "smtp_tls_CAfile",
@@ -63,31 +64,31 @@ MAIN_CF_OPTIONS = [
 def rockstor_postfix_config(fo, smtp_server, port, revert):
     if revert is True:
         return
-    distro_id = distro.id()
-    if distro_id == "rockstor":
-        CAfile_path = "/etc/ssl/certs/ca-bundle.crt"
-    else:  # i.e. openSUSE Leap / Tumbleweed
-        CAfile_path = "/etc/ssl/ca-bundle.pem"
+    # i.e. openSUSE Leap / Tumbleweed
+    cafile_path = "/etc/ssl/ca-bundle.pem"
     # If we move in the future to using yast here note /etc/sysconfig/postfix
-    fo.write("{}\n".format(HEADER))
-    fo.write("relayhost = [{}]:{}\n".format(smtp_server, port))
-    fo.write("smtp_use_tls = yes\n")
+    fo.write(f"{HEADER}\n")
+    fo.write(f"relayhost = [{smtp_server}]:{port}\n")
+    # See: https://www.postfix.org/postconf.5.html#smtp_tls_security_level
+    # overrides empty: smtp_use_tls
+    # fo.write("smtp_use_tls = yes\n")  # deprecated by smtp_tls_security_level
+    fo.write("smtp_tls_security_level = may\n")
     fo.write("smtp_sasl_auth_enable = yes\n")
     fo.write("smtp_sasl_password_maps = lmdb:/etc/postfix/sasl_passwd\n")
-    fo.write("smtp_tls_CAfile = {}\n".format(CAfile_path))
+    fo.write(f"smtp_tls_CAfile = {cafile_path}\n")
     fo.write("smtp_sasl_security_options = noanonymous\n")
     # N.B. no "yast sysconfig set" option found for the following:
     fo.write("smtp_sasl_tls_security_options = noanonymous\n")
     fo.write("smtp_generic_maps = lmdb:/etc/postfix/generic\n")
-    fo.write("{}\n".format(FOOTER))
-    logger.info("master.cf: adding new configuration")
+    fo.write(f"{FOOTER}\n")
+    logger.info(f"{MAIN_CF}: adding new configuration")
 
 
 def update_master():
     """
     Edits /etc/postfix/master.cf as required and then runs "postfix reload"
     Predominantly for openSUSE to ensure tlsmgr is un-remarked.
-    Default permissions in both our CentOS base and within openSUSE:
+    Default permissions in both our prior CentOS base and within openSUSE:
     -rw-r--r-- 1 root root 6105 Oct 30  2018 /etc/postfix/master.cf
     source:
     "#tlsmgr    unix  -       -       n       1000?   1       tlsmgr"
@@ -96,9 +97,6 @@ def update_master():
     I.e. we un-remark this line
     :return:
     """
-    distro_id = distro.id()
-    if distro_id == "rockstor":
-        return
     # master.cf edit
     tlsmgr_source = "#tlsmgr"
     tlsmgr_target = "tlsmgr    unix  -       -       n       1000?   1       tlsmgr"
@@ -117,7 +115,7 @@ def disable_sysconfig_mail():
     A default openSUSE install (JeOS and up) enforces email settings via
     sysconfig. As we are currently invested in 'hand configuring' our own email
     configuration disable this service.
-    N.B. we assume openSUSE if not distro "rockstor"
+    We assume openSUSE.
     :return:
     """
     # We could do a distro check here but this works and avoids no file found
@@ -142,7 +140,7 @@ def update_forward(email, revert=False):
         if not revert:
             # N.B. if we want local and forward then we need to also include
             # root@localhost as one of the comma separated emails.
-            fo.write("{}, root\n".format(email))
+            fo.write(f"{email}, root\n")
 
 
 def update_generic(sender, revert=False):
@@ -151,7 +149,7 @@ def update_generic(sender, revert=False):
     @<hostname> <sender-email-address>
     @<hostname>.localdomain <sender-email-address>
     Then sets the file permissions and runs "postmap generic" to create the db
-    file and change it's permissions in turn.
+    file and change its permissions in turn.
     :param sender: email address entered as the sender email account
     :param revert: if True wipe the generic_file and db (defaults to False)
     :return:
@@ -160,15 +158,15 @@ def update_generic(sender, revert=False):
     dnsdomain = getdnsdomain()
     with open(GENERIC, "w") as fo:
         if not revert:
-            fo.write("@{} {}\n".format(hostname, sender))
-            fo.write("@{}.localdomain {}\n".format(hostname, sender))
+            fo.write(f"@{hostname} {sender}\n")
+            fo.write(f"@{hostname}.localdomain {sender}\n")
             # add @<hostname>.<domain> if we can get a dnsdomain:
             if dnsdomain not in ("", "localdomain"):
-                fo.write("@{}.{} {}\n".format(hostname, dnsdomain, sender))
+                fo.write(f"@{hostname}.{dnsdomain} {sender}\n")
             # Add fall through entries for when the sending agent uses localhost.
             # This avoids some bounce scenarios when sender/from is root@localhost
-            fo.write("@localhost {}\n".format(sender))
-            fo.write("@localhost.localdomain {}\n".format(sender))
+            fo.write(f"@localhost {sender}\n")
+            fo.write(f"@localhost.localdomain {sender}\n")
     # Set file to r-- --- --- (400) via stat constants.
     os.chmod(GENERIC, stat.S_IRUSR)
     run_command([POSTMAP, GENERIC])
@@ -178,7 +176,7 @@ def update_sasl(smtp_server, port, username, password, revert=False):
     sasl_file = "/etc/postfix/sasl_passwd"
     with open(sasl_file, "w") as fo:
         if not revert:
-            fo.write("[{}]:{} {}:{}\n".format(smtp_server, port, username, password))
+            fo.write(f"[{smtp_server}]:{port} {username}:{password}\n")
     # Set file to r-- --- --- (400) via stat constants.
     os.chmod(sasl_file, stat.S_IRUSR)
     run_command([POSTMAP, sasl_file])
@@ -210,9 +208,7 @@ def update_postfix(smtp_server, port, revert=False):
                         len(line_fields) > 0
                         and line_fields[0].strip() in MAIN_CF_OPTIONS
                     ):
-                        logger.info(
-                            "master.cf: removing {}".format(line_fields[0].strip())
-                        )
+                        logger.info(f"{MAIN_CF}: removing {line_fields[0].strip()}")
                         continue  # effectively removing these entries.
                 tfo.write(line)
         if rockstor_section is False:
@@ -235,7 +231,7 @@ class EmailClientView(rfc.GenericView):
             commands_list = ["send-test-email", "check-smtp-auth"]
             if command is not None:
                 if command not in commands_list:
-                    e_msg = ("Unknown command ({}) is not supported.").format(command)
+                    e_msg = f"Unknown command ({command}) is not supported."
                     handle_exception(Exception(e_msg), request)
 
                 if command == "send-test-email":
@@ -247,9 +243,8 @@ class EmailClientView(rfc.GenericView):
                         handle_exception(Exception(e_msg), request)
 
                     eco = EmailClient.objects.all()[0]
-                    subject = ("Test message from Rockstor. Appliance id: {}").format(
-                        Appliance.objects.get(current_appliance=True).uuid
-                    )  # noqa E501
+                    uuid = Appliance.objects.get(current_appliance=True).uuid
+                    subject = f"Test message from Rockstor. Appliance id: {uuid}"
                     send_test_email(eco, subject)
                     return Response()
 
