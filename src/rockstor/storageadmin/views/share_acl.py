@@ -15,14 +15,17 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
+from os import stat, stat_result
+from stat import S_IMODE
+
 from rest_framework.response import Response
 from django.db import transaction
-from django.conf import settings
 from storageadmin.models import Share
 from storageadmin.serializers import ShareSerializer
-from fs.btrfs import mount_share, umount_root
+from fs.btrfs import mount_share, umount_root, get_property
 from storageadmin.views import ShareListView
 from system.acl import chown, chmod
+from system.users import user_name, group_name
 
 
 class ShareACLView(ShareListView):
@@ -30,32 +33,48 @@ class ShareACLView(ShareListView):
     def post(self, request, sid):
         with self._handle_exception(request):
             share = Share.objects.get(id=sid)
-            options = {
-                "owner": "root",
-                "group": "root",
-                "perms": "755",
-                "orecursive": True,
-                "precursive": True,
+            # OWNER, GROUP, AND PERMISSIONS UPDATE.
+            # Get the on disk subvol info.
+            mnt_pt = share.mnt_pt
+            share_stat: stat_result = stat(mnt_pt)
+            subvol_owner = user_name(share_stat.st_uid)
+            subvol_group = group_name(share_stat.st_gid)
+            subvol_perms = oct(S_IMODE(share_stat.st_mode))[2:].zfill(3)
+            # Establish the requested owner, group, perms, defaulting to on disk info.
+            options: dict[str, str | bool] = {
+                "owner": request.data.get("owner", subvol_owner),
+                "group": request.data.get("group", subvol_group),
+                "perms": request.data.get("perms", subvol_perms),
+                # Owner and group recursive (unimplemented in Web-UI)
+                "orecursive": request.data.get("orecursive", True),
+                # Permissions recursive (unimplemented in Web-UI)
+                "precursive": request.data.get("precursive", True),
             }
-            options["owner"] = request.data.get("owner", options["owner"])
-            options["group"] = request.data.get("group", options["group"])
-            options["perms"] = request.data.get("perms", options["perms"])
-            options["orecursive"] = request.data.get(
-                "orecursive", options["orecursive"]
-            )
-            options["precursive"] = request.data.get(
-                "precursive", options["precursive"]
-            )
-            share.owner = options["owner"]
-            share.group = options["group"]
-            share.perms = options["perms"]
-            share.save()
+            # Align Share DB with requested owner, group, perms: if required.
+            changed_fields: list[str] = []
+            if share.owner != options["owner"]:
+                share.owner = options["owner"]
+                changed_fields.append("owner")
+            if share.group != options["group"]:
+                share.group = options["group"]
+                changed_fields.append("group")
+            if share.perms != options["perms"]:
+                share.perms = options["perms"]
+                changed_fields.append("perms")
+            # COMPRESSION SETTING FROM DISK
+            # Opportunistically update DB Share.compression_algo.
+            compression: str = get_property(mnt_pt, "compression")
+            if share.compression_algo != compression:
+                share.compression_algo = compression
+                changed_fields.append("compression_algo")
+            share.save(update_fields=changed_fields)
 
-            mnt_pt = "%s%s" % (settings.MNT_PT, share.name)
             force_mount = False
             if not share.is_mounted:
                 mount_share(share, mnt_pt)
                 force_mount = True
+            # TODO: Huey task that will return immediately, but are run asynchronously
+            #  around a second after being called.
             chown(mnt_pt, options["owner"], options["group"], options["orecursive"])
             chmod(mnt_pt, options["perms"], options["precursive"])
             if force_mount is True:
