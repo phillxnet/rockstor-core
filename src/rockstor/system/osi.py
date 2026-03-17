@@ -1567,6 +1567,19 @@ def get_disk_APM_level(dev_byid):
             return level
     return 0
 
+def hdparm_stderr_ok(stderr: list[str]) -> bool:
+    """
+    For some hardware, hdparm prints error messages to stderr even when it's
+    able to successfully perform the request.  This function takes the stderr
+    output from hdparm and returns True if we believe the command ran OK, i.e.
+    the error text was spurious.  Returns False if it seems to be a real error.
+    :param stderr: The stderr output from hdparm, split on newlines into a list.
+    :return: True if the command seemed to run OK, meaning any stderr error
+    message was spurious, and False if there seemed to be a real error.
+    """
+    spurious = r"SG_IO: bad/missing sense data, sb\[\]: ( [0-9A-Fa-f]{2}){32}"
+    return len(stderr) == 1 or (len(stderr) == 2 and
+                                re.fullmatch(spurious, stderr[0]) is not None)
 
 def set_disk_spindown(
     dev_byid, spindown_time, apm_value, spindown_message="no comment"
@@ -1620,7 +1633,7 @@ def set_disk_spindown(
         # Try running this -B only hdparm to see if it will run without
         # error or non zero return code.
         out, err, rc = run_command(hdparm_command, throw=False)
-        if rc == 0 and len(err) == 1:
+        if rc == 0 and hdparm_stderr_ok(err):
             # if execution of the -B switch ran OK then add to switch list
             switch_list += apm_switch_list
         else:
