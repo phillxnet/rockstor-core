@@ -18,15 +18,19 @@
 */
 </script>
 
-<div class="alert alert-warning">
-    <p>We strongly recommend that you create a separate Share (at least 5GB size) for this purpose. During the lifetime of Rock-ons, several snapshots will be created and space could fill up quickly. It is best managed in a separate Share to avoid clobbering other data.</p>
-    <p>To create a new Share, <a href="#add_share">click here.</a></p>
+<div class="alert alert-info">
+    <p><strong>The Rock-on system requires a dedicated Share of at least 5GB</strong> with the default (owner:group) and permissions.
+    As Rock-ons are installed, many snapshots will be created within this Share.
+    These snapshots/subvols are the program or application part of each Rock-on installed.</p>
+    <p><i>WARNING: Be sure not to delete these snapshots as this will break all Rock-ons whose applications share the affected OCI image layers that these snapshots represent.</i></p>
+    <p>- See our online <a href="https://rockstor.com/docs/interface/overview.html" target="_blank">Rock-ons (Docker Plugins)</a> guide for full setup instructions.</p>
+    <p>Visit STORAGE -> Shares -> "Create Share" if a suitable dedicated Share does not already exist.</p>
 </div>
 
 <div class="row">
     <div class="col-md-12">
         <div class="panel panel-default">
-            <div class="panel-heading">Configure {{serviceName}} Service
+            <div class="panel-heading">Configure the {{serviceName}} Service
                 <a href="https://rockstor.com/docs/interface/system/services.html#rock-ons-docker-plugin-system" target="_blank"
                    title="See Rockstor's documentation" rel="tooltip"><i class="glyphicon glyphicon-question-sign"></i></a>
             </div>
@@ -35,7 +39,7 @@
                     <div class="messages"></div>
 
                     <div class="form-group">
-                        <label class="col-sm-4 control-label" for="root_share">Root Share<span class="required"> *</span></label>
+                        <label class="col-sm-4 control-label" for="root_share">Share [e.g. rockons-root]<span class="required"> *</span></label>
                         <div class="col-sm-4">
                             {{display_rockon_shares}}
                         </div>
