@@ -218,7 +218,7 @@ ConfigureServiceView = RockstorLayoutView.extend({
         this.$('#docker-form #root_share').tooltip({
             html: true,
             placement: 'right',
-            title: 'We strongly recommend that you create a separate Share(at least 5GB size) for this purpose. During the lifetime of Rock-ons, several snapshots will be created and space could fill up quickly. It is best managed in a separate Share to avoid clobbering other data.'
+            title: 'Select the dedicated Rock-ons root Share of at least 5GB.'
         });
         this.$('#active-directory-form #domain').tooltip({
             html: true,
