@@ -3,7 +3,7 @@
  * @licstart  The following is the entire license notice for the
  * JavaScript code in this page.
  *
- * Copyright (joint work) 2024 The Rockstor Project <https://rockstor.com>
+ * Copyright (joint work) 2026 The Rockstor Project <https://rockstor.com>
  *
  * Rockstor is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published
@@ -31,8 +31,10 @@ VersionView = RockstorLayoutView.extend({
         'click #disableAuto': 'disableAutoUpdate',
         'click #stable-modal': 'showStableModal',
         'click #testing-modal': 'showTestingModal',
+        'click #edge-modal': 'showEdgeModal',
         'click #activateStable': 'activateStable',
-        'click #activateTesting': 'activateTesting'
+        'click #activateTesting': 'activateTesting',
+        'click #activateEdge': 'activateEdge'
     },
 
     initialize: function() {
@@ -89,12 +91,16 @@ VersionView = RockstorLayoutView.extend({
 
         var stableSub = null;
         var defaultSub = null;
+        var edgeSub = null;
         this.subscriptions.each(function(s) {
             if (s.get('name') == 'Stable') {
                 stableSub = s.toJSON();
             }
             if (s.get('name') == 'Testing') {
                 defaultSub = s.toJSON();
+            }
+            if (s.get('name') == 'Edge') {
+                edgeSub = s.toJSON();
             }
         });
         var currentAppliance = this.appliances.find(function(a) {
@@ -109,6 +115,7 @@ VersionView = RockstorLayoutView.extend({
             autoUpdateEnabled: this.autoUpdateEnabled,
             stableSub: stableSub,
             defaultSub: defaultSub,
+            edgeSub: edgeSub,
             applianceId: currentAppliance.get('uuid')
         }));
         this.$('#update-modal').modal({
@@ -279,6 +286,10 @@ VersionView = RockstorLayoutView.extend({
         this.$('#activate-testing').modal('show');
     },
 
+    showEdgeModal: function() {
+        this.$('#activate-edge').modal('show');
+    },
+
     activateStable: function() {
         var button = this.$('activateStable');
         if (buttonDisabled(button)) return false;
@@ -318,6 +329,22 @@ VersionView = RockstorLayoutView.extend({
         });
     },
 
+    activateEdge: function() {
+        var _this = this;
+        var button = this.$('activateEdge');
+        if (buttonDisabled(button)) return false;
+        disableButton(button);
+        console.log('Inactive edge');
+        $.ajax({
+            url: '/api/update-subscriptions/activate-edge',
+            type: 'POST',
+            dataType: 'json',
+            success: function(data, status, xhr) {
+                _this.reloadWindow();
+            }
+        });
+    },
+
     initHandlebarHelpers: function() {
         Handlebars.registerHelper('is_sub_active', function(sub, options) {
             if (sub && sub.status == 'active') {
@@ -326,7 +353,7 @@ VersionView = RockstorLayoutView.extend({
             return options.inverse(this);
         });
         Handlebars.registerHelper('no_sub_active', function(options) {
-            if (!this.defaultSub && !this.stableSub) {
+            if (!this.defaultSub && !this.stableSub && !this.edgeSub) {
                 return options.fn(this);
             }
             return options.inverse(this);

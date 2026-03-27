@@ -1,102 +1,155 @@
 <script>
-$(document).ready(function(){
-  $("#subscription-table tr td:first-child").css( "color", "#eb6841" );
-});
+    $(document).ready(function () {
+        $("#subscription-table tr td:first-child").css("color", "#eb6841");
+    });
 </script>
 
 <div class="row">
   <div class="col-md-8 col-md-offset-2">
 
-    {{#is_sub_active defaultSub}}
-    <div class="alert alert-danger">
+    {{#is_sub_active defaultSub}} <!-- Testing active header-->
+    <div class="alert alert-warning">
       <p>
         <a href="https://rockstor.com/docs/update-channels/update_channels.html#testing-channel" target="_blank">Testing Updates</a>
-        are <strong>activated</strong>. These are cutting edge updates that should
-        be applied only after careful consideration. When an update is released,
-        read the changelog and proceed with caution.
+        are <strong>activated</strong>.
+        These are in-development / pre-stable updates that should be applied only after careful consideration.
+        Whenever an update is released, be sure to read the changelog carefully before proceeding.
+        <strong>Be advised that production use of Testing updates is discouraged.</strong>
       </p>
       <p>
         Alternatively,
         <a href="https://rockstor.com/docs/update-channels/update_channels.html#stable-channel" target="_blank">Stable Updates</a>
-        are generally recommended as shown below.
+        are generally recommended for production.
       </p>
     </div>
     {{/is_sub_active}}
 
-    {{#no_sub_active}}
-    <div class="alert alert-success">
+    {{#is_sub_active edgeSub}} <!-- Edge active header-->
+    <div class="alert alert-danger">
+      <p>
+        <a href="https://rockstor.com/docs/update-channels/update_channels.html#edge-channel" target="_blank">Edge Updates</a>
+        are <strong>activated</strong>.
+        These updates are NOT field-tested, and are intended for development use only.
+        They are expected to install;
+        but they may not provide even basic functionality, including upgrading from prior releases.
+      </p>
+      <p>
+        Due to the edge nature of this channel, changelogs may not always be available or functional.
+        <strong>Edge updates are definitely not intended for production use.</strong>
+      </p>
+      <p>
+        Alternatively,
+        <a href="https://rockstor.com/docs/update-channels/update_channels.html#stable-channel" target="_blank">Stable Updates</a>
+        are generally recommended for production use.
+      </p>
+    </div>
+    {{/is_sub_active}}
+
+    {{#no_sub_active}} <!-- No subscription active header-->
+    <div id="updateInfo" class="alert alert-success">
       <p>
         Rockstor package
         <a href="https://rockstor.com/docs/update-channels/update_channels.html" target="_blank"> update channels. </a>
-        Please activate appropriately for your needs.
-        <br>- <strong>Stable updates</strong>: recommended for production use (paid) -
-        <a href="https://rockstor.com/paid_support.html" target="_blank"><i>Paid Support</i></a> eligible.
-        <br>- <strong>Testing updates</strong>: for development / actively testing latest code (free).
+        Activate appropriately for your needs and/or intentions.
+        <br>- <strong>Stable updates</strong>: Intended for production use (<i>non-profit</i> subscription).
+        <br>- <strong>Testing updates</strong>: Field-testing towards future Stable releases (free).
+        <br>- <strong>Edge updates</strong>: Untested releases - developers only (free).
         <br>See our <a href="https://forum.rockstor.com/" target="_blank">friendly forum</a> for advise.
       </p>
+      <strong>This selection does not affect our upstream 'Built on openSUSE' updates.</strong>
+      <br>
+      <strong><a href="https://rockstor.com/about-us.html" target="_blank">We</a>
+        are a <i>non-profit</i> community endeavour fiscally hosted by
+        <a href="https://opensourceeurope.org/" target="_blank"> Open Source Europe (OSE).</a>
+      </strong>
     </div>
     {{/no_sub_active}}
 
     {{#is_sub_active stableSub}}
-    {{else}}
+    <!-- Only show the overview table when NOT Stable subscribed - Stable has its own overview page. -->
+    {{ else }}
     <table class="table table-hover" id="subscription-table">
       <thead>
-	<tr class="active">
-          <th>Feature</th>
-          <th><a href="https://rockstor.com/docs/update-channels/update_channels.html#stable-channel" target="_blank">Stable Updates</a></th>
-          <th><a href="https://rockstor.com/docs/update-channels/update_channels.html#testing-channel" target="_blank">Testing Updates</a></th>
-	</tr>
+      <tr class="active">
+        <th>Feature</th>
+        <th>
+          <a href="https://rockstor.com/docs/update-channels/update_channels.html#stable-channel" target="_blank">Stable Updates</a>
+        </th>
+        <th>
+          <a href="https://rockstor.com/docs/update-channels/update_channels.html#testing-channel" target="_blank">Testing Updates</a>
+        </th>
+        <th>
+          <a href="https://rockstor.com/docs/update-channels/update_channels.html#edge-channel" target="_blank">Edge Updates</a>
+        </th>
+      </tr>
       </thead>
       <tbody>
-	<tr>
-          <td>Update Frequency</td>
-          <td>2-4 Months</td>
-          <td>2-4 Weeks</td>
-	</tr>
-	<tr>
-          <td>Priority of bug fixes</td>
-          <td>Highest</td>
-          <td>Varies</td>
-	</tr>
-	<tr>
-          <td>Automated functional testing</td>
-          <td><i class="fa fa-check"></i></td>
-          <td><i class="fa fa-check"></i></td>
-	</tr>
-	<tr>
-          <td>Tested in development environment</td>
-          <td><i class="fa fa-check"></i></td>
-          <td><i class="fa fa-check"></i></td>
-	</tr>
-	<tr>
-          <td>Low risk of regressions</td>
-          <td><i class="fa fa-check"></i></td>
-          <td><i class="fa fa-times"></i></td>
-	</tr>
-	<tr>
-          <td>Tested in production environment</td>
-          <td><i class="fa fa-check"></i></td>
-          <td><i class="fa fa-times"></i></td>
-	</tr>
-	<tr>
-          <td>Tested by community</td>
-          <td><i class="fa fa-check"></i></td>
-          <td><i class="fa fa-times"></i></td>
-	</tr>
-  <tr>
-          <td>Paid Support available</td>
-          <td><i class="fa fa-check"></i></td>
-          <td><i class="fa fa-times"></i></td>
-  </tr>
-	<tr>
-          <td></td>
-          <td><a id="stable-modal" class="btn btn-success" title="Activate Stable subscription">Activate</a></td>
-	  {{#is_sub_active defaultSub}}
-          <td><a id="testing-modal" class="btn btn-danger" title="Activate Testing subscription" disabled>Currently Active</a></td>
-	  {{else}}
-          <td><a id="testing-modal" class="btn btn-danger" title="Activate Testing subscription">Activate</a></td>
-	  {{/is_sub_active}}
-	</tr>
+      <tr>
+        <td>Update Frequency</td>
+        <td>3-6 Months</td>
+        <td>3-6 Weeks</td>
+        <td>3-6 Days</td>
+      </tr>
+      <tr>
+        <td>Priority of bug fixes</td>
+        <td>Highest</td>
+        <td>Varies</td>
+        <td>None</td>
+      </tr>
+      <tr>
+        <td>Risk of regressions</td>
+        <td>Low</td>
+        <td>Medium</td>
+        <td>High</td>
+      </tr>
+      <tr>
+        <td>Automated unit testing</td>
+        <td><i class="fa fa-check"></i></td>
+        <td><i class="fa fa-check"></i></td>
+        <td><i class="fa fa-check"></i></td>
+      </tr>
+      <tr>
+        <td>Tested in development environment</td>
+        <td><i class="fa fa-check"></i></td>
+        <td><i class="fa fa-check"></i></td>
+        <td><i class="fa fa-times"></i></td>
+      </tr>
+      <tr>
+        <td>Tested by community</td>
+        <td><i class="fa fa-check"></i></td>
+        <td><i class="fa fa-check"></i></td>
+        <td><i class="fa fa-times"></i></td>
+      </tr>
+      <tr>
+        <td>Tested in production environment</td>
+        <td><i class="fa fa-check"></i></td>
+        <td><i class="fa fa-times"></i></td>
+        <td><i class="fa fa-times"></i></td>
+      </tr>
+      <tr>
+        <td>Eligible for <a href="https://rockstor.com/paid_support.html" target="_blank"><i>Paid Support</i></a></td>
+        <td><i class="fa fa-check"></i></td>
+        <td><i class="fa fa-times"></i></td>
+        <td><i class="fa fa-times"></i></td>
+      </tr>
+      <tr>
+        <td></td>
+        <!-- stableSub (Stable) always disabled on this page - hence only an "Activate" button -->
+        <td><a id="stable-modal" class="btn btn-success" title="Activate Stable subscription">Activate</a></td>
+        <!-- defaultSub (Testing) -->
+        {{#is_sub_active defaultSub}}
+        <td><a id="testing-modal" class="btn btn-warning" title="Reactivate Testing subscription">Currently Active</a>
+        </td>
+        {{ else }}
+        <td><a id="testing-modal" class="btn btn-warning" title="Activate Testing subscription">Activate</a></td>
+        {{/is_sub_active}}
+        <!-- edgeSub (Edge) -->
+        {{#is_sub_active edgeSub}}
+        <td><a id="edge-modal" class="btn btn-danger" title="Reactivate Edge subscription">Currently Active</a></td>
+        {{ else }}
+        <td><a id="edge-modal" class="btn btn-danger" title="Activate Edge subscription">Activate</a></td>
+        {{/is_sub_active}}
+      </tr>
       </tbody>
     </table>
     {{/is_sub_active}}
@@ -108,7 +161,7 @@ $(document).ready(function(){
 <br>
 <div class="col-sm-offset-3 col-sm-6 col-sm-offset-3">
   <div id="updateInfo">
-    <h3><strong>Rockstor {{mostRecentVersion}}</strong> update is available! </h3>
+    <h3><strong>Rockstor {{ mostRecentVersion }}</strong> update is available! </h3>
   </div>
 </div>&nbsp;&nbsp;&nbsp;&nbsp;
 <br><br>
@@ -117,14 +170,14 @@ $(document).ready(function(){
     <p>List of changes in this update (try page reload if empty)</p>
     <ul>
       {{#each changeMap}}
-      <li><p>{{this}}</p></li>
+      <li><p>{{ this }}</p></li>
       {{/each}}
     </ul>
     {{#is_sub_active defaultSub}}
     <p>
-      You should review the
-      changelog <a href="https://github.com/rockstor/rockstor-core/commits/master"
-		   target="_blank">here</a> before proceeding with the update.
+      You should review the relevant changelog
+      <a href="https://github.com/rockstor/rockstor-core/releases" target="_blank">Releases</a>
+      before proceeding with the update.
     </p>
     {{/is_sub_active}}
   </div>
@@ -136,7 +189,8 @@ $(document).ready(function(){
     <h4>Our Open Source development is dependant upon active
       <a href="https://rockstor.com/docs/update-channels/update_channels.html#testing-channel" target="_blank">Testing Updates </a>
       participation,
-      <a href="https://opencollective.com/the-rockstor-project/contribute" target="_blank"> donations (Open Collective)</a>
+      <a href="https://opencollective.com/the-rockstor-project/contribute" target="_blank"> donations (Open
+        Collective)</a>
       , and
       <a href="https://rockstor.com/docs/update-channels/update_channels.html#stable-channel" target="_blank">Stable Updates </a>
       subscriptions with their associated
@@ -147,17 +201,17 @@ $(document).ready(function(){
   <a id="update" class="btn btn-primary" title="start update">Start Update</a>
 </div>
 
-{{else}}
+{{ else }}
 <div class="col-md-offset-3 col-md-6 col-md-offset-3">
   <div id="updateInfo">
-    <h3>System is running Rockstor version: {{currentVersion}}</h3>
-    <p>If you've updated recently, reload the browser<b>(Ctrl+Shift+R)</b> for latest UI changes.</p><br>
+    <h3>System is running Rockstor version: {{ currentVersion }}</h3>
+    <p>If you've recently updated, refresh the browser cache via <b>(Ctrl+Shift+R)</b> for the latest changes.</p><br>
 
-<!--    {{#if autoUpdateEnabled}}-->
-<!--    <a id="autoUpdateSwitch" class="btn btn-primary" title="Rockstor is configured to check for available system updates and automatically upgrade all packages on a daily basis. This will keep your entire system up to date. While it's not recommended, you can disable this feature and only update when you want to.">Disable auto update</a>-->
-<!--    {{else}}-->
-<!--    <a id="autoUpdateSwitch" class="btn btn-primary" title="Rockstor can be configured to check for available system updates and automatically upgrade all packages on a daily basis. We recommend you enable this feature to keep your entire system up to date without delay.">Enable auto update</a>-->
-<!--    {{/if}}-->
+    <!--    {{#if autoUpdateEnabled}}-->
+    <!--    <a id="autoUpdateSwitch" class="btn btn-primary" title="Rockstor is configured to check for available system updates and automatically upgrade all packages on a daily basis. This will keep your entire system up to date. While it's not recommended, you can disable this feature and only update when you want to.">Disable auto update</a>-->
+    <!--    {{else}}-->
+    <!--    <a id="autoUpdateSwitch" class="btn btn-primary" title="Rockstor can be configured to check for available system updates and automatically upgrade all packages on a daily basis. We recommend you enable this feature to keep your entire system up to date without delay.">Enable auto update</a>-->
+    <!--    {{/if}}-->
   </div>
 </div>
 {{/update_available}}
@@ -167,13 +221,25 @@ $(document).ready(function(){
   <div id="updateInfo" class="alert alert-success">
     <p></p>
     <p>
-      <a href="https://rockstor.com/docs/update-channels/update_channels.html#stable-channel" target="_blank">Stable Updates</a>
-      are <strong>activated</strong> - install eligible for
-      <a href="https://rockstor.com/paid_support.html" target="_blank"><i>Paid Support.</i></a>
-      <br><br>
-      While it's not recommended, if you are absolutely sure,
-      <a href="https://rockstor.com/docs/update-channels/update_channels.html#testing-channel" target="_blank">Testing Updates</a>
-      can be activated by clicking <a id="testing-modal"> here.</a>
+      <strong>
+        <a href="https://rockstor.com/docs/update-channels/update_channels.html#stable-channel" target="_blank">Stable Updates</a>
+        are activated - install is eligible for
+        <a href="https://rockstor.com/paid_support.html" target="_blank"><i>Paid Support.</i></a>
+      </strong>
+    <hr>
+    The following development orientated channels are available:<br>
+    <dl>
+      <dt>
+        <a href="https://rockstor.com/docs/update-channels/update_channels.html#testing-channel" target="_blank">About Testing Updates</a>
+        - Field-testing towards future Stable releases.
+      <dd>Activate: <a id="testing-modal">Testing</a>.</dd>
+      </dt>
+      <dt>
+        <a href="https://rockstor.com/docs/update-channels/update_channels.html#edge-channel" target="_blank">About Edge Updates</a>
+        - Untested releases - developers only.
+      <dd>Activate: <a id="edge-modal">Edge</a>.</dd>
+      </dt>
+    </dl>
     </p>
   </div>
   {{/is_sub_active}}
@@ -183,14 +249,17 @@ $(document).ready(function(){
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-	<h4>Rockstor is being updated to the latest version in the selected update channel. Please wait... &nbsp;&nbsp; </h4>
+        <h4>Rockstor is updating to the latest version in the selected update channel. Please wait...
+          &nbsp;&nbsp; </h4>
       </div>
       <div class="modal-body">
-	<div style="text-align: center">
-	  <img src="/static/storageadmin/img/ajax-loader-big.gif">
-	  <div id="time-left"></div>
-	</div>
-	<div id="user-msg" style="display: none">The Rockstor update is still going on. if the page does not automatically refresh after a few minutes, please try manually refreshing after some time.</div>
+        <div style="text-align: center">
+          <img src="/static/storageadmin/img/ajax-loader-big.gif">
+          <div id="time-left"></div>
+        </div>
+        <div id="user-msg" style="display: none">The Rockstor update is still going on. if this page does not
+          automatically refresh after a few minutes, try manually refreshing.
+        </div>
       </div>
     </div><!-- /.modal-content -->
   </div><!-- /.modal-dialog -->
@@ -203,41 +272,45 @@ $(document).ready(function(){
         <h3 class="modal-title">Activate Stable updates.</h3>
       </div>
       <div style="font-size: 13px" class="modal-body">
-	<p>
-	  Please follow these steps to activate Stable Updates.<br>
-    <div style="text-align: center;">
-         <strong><i>Steps 1 & 2 will each send confirmation / information emails.</i></strong>
-      </div>
-	</p>
-	<ol>
-    <li>Become a "Stable Updates subscription" contributor / member at our
-        <a href="https://opencollective.com/the-rockstor-project/contribute" target="_blank">Open Collective.</a></li>
-    <li>Enter / Edit / Check your <span style="color:green">Current Appliance ID</span> in your
-      <a href="https://appman.rockstor.com/" target="_blank">Appliance ID manager</a> <strong>Appman</strong>.</li>
-    <li>Enter your Activation code below, emailed by <strong>Appman</strong> immediately after step 2.</li>
-	</ol>
-        Thank you for helping to support Rockstor's development.
-	<form id="activate-stable-form" name="aform" class="form-horizontal">
-	  <div class="form-group">
-	    <label class="col-sm-4 control-label" for="activation-code">Activation Code <span class="required">*</span></label>
-	    <div class="col-sm-4">
-	      {{#if stableSub}}
-	      <input class="form-control" type="text" id="activation-code" value="{{stableSub.password}}"name="activation-code">
-	      {{else}}
-	      <input class="form-control" type="text" id="activation-code" name="activation-code">
-	      {{/if}}
-	    </div>
-	  </div>
-	  <p style="color:green">Current Appliance ID: {{applianceId}}</p>
-    <br>
-    Note your complementary self service <a href="https://appman.rockstor.com/" target="_blank">Appliance ID manager</a> <strong>Appman</strong>.
-    <br>
-    The above 'Current Appliance ID' should match that within Appman for this computer.
-	  <div class="modal-footer">
-  	    <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Cancel</button>
-  	    <a id="activateStable" class="btn btn-primary" title="Activate">Activate</a>
-	  </div>
-	</form>
+        <p>
+          Please follow these steps to activate Stable Updates.<br>
+        <div style="text-align: center;">
+          <strong><i>Steps 1 & 2 will each send confirmation / information emails.</i></strong>
+        </div>
+        </p>
+        <ol>
+          <li>Become a "Stable Updates subscription" contributor / member at our
+            <a href="https://opencollective.com/the-rockstor-project/contribute" target="_blank">Open Collective.</a>
+          </li>
+          <li>Enter / Edit / Check your <span style="color:green">Current Appliance ID</span> in your
+            <a href="https://appman.rockstor.com/" target="_blank">Appliance ID manager</a> <strong>Appman</strong>.
+          </li>
+          <li>Enter your Activation code below, emailed by <strong>Appman</strong> immediately after step 2.</li>
+        </ol>
+        Thank you for helping to support Rockstor's non-profit development.
+        <form id="activate-stable-form" name="aform" class="form-horizontal">
+          <div class="form-group">
+            <label class="col-sm-4 control-label" for="activation-code">Activation Code <span class="required">*</span></label>
+            <div class="col-sm-4">
+              {{#if stableSub}}
+              <input class="form-control" type="text" id="activation-code" value="{{ stableSub.password }}"
+                     name="activation-code">
+              {{ else }}
+              <input class="form-control" type="text" id="activation-code" name="activation-code">
+              {{/if}}
+            </div>
+          </div>
+          <p style="color:green">Current Appliance ID: {{ applianceId }}</p>
+          <br>
+          Note your complementary self-service <a href="https://appman.rockstor.com/" target="_blank">Appliance ID
+          manager</a> <strong>Appman</strong>.
+          <br>
+          The above 'Current Appliance ID' should match that within Appman for this computer.
+          <div class="modal-footer">
+            <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Cancel</button>
+            <a id="activateStable" class="btn btn-primary" title="Activate">Activate</a>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -251,22 +324,51 @@ $(document).ready(function(){
         <h4 class="modal-title">Activate Testing updates</h4>
       </div>
       <div class="modal-body">
-	<p>
-	  Testing updates are high frequency updates that are released just
-	  after development environment testing, as opposed to Stable updates
-	  that are released only after significant testing and qualification
-	  processes. Because of this, Testing updates are higher risk and are
-	  generally not recommended.
-	</p>
-	<p>
-	  Whenever an update is released, read the changelog and decide to
-	  update or not only after careful consideration.
-	</p>
-      	<p>Are you sure?</p>
+        <p>
+          Testing releases are inherited periodically from the Edge update channel.
+          As such, early-on in each testing phases, there can still be significant known, and unknown issues.
+          <strong>Be advised that production use of Testing updates is discouraged.</strong>
+          Stable updates, intended for production, are take from the end of each testing phase.
+        </p>
+        <p>
+          Whenever an update is released, be sure to read the changelog carefully before proceeding.
+        </p>
+        <p>Are you sure?</p>
       </div>
       <div class="modal-footer">
-      <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Cancel</button>
-      <a id="activateTesting" class="btn btn-primary" title="Activate">Activate</a>
+        <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Cancel</button>
+        <a id="activateTesting" class="btn btn-primary" title="Activate">Activate</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="activate-edge" class="modal fade">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">Activate Edge updates</h4>
+      </div>
+      <div class="modal-body">
+        <p>
+          Edge updates are NOT field-tested, and intended for development use only.
+          Packages in this update channel have passed only rudimentary rpmbuild tests.
+          After moderate install and upgrade testing, select packages in Edge are
+          promoted to the Testing updates channel for wider field-testing.
+        </p>
+        <p>
+          Edge updates have the highest risk. They are expected to install,
+          but they may not provide all basic functionality, including upgrading from prior releases.
+          <strong>Edge updates are definitely not intended for production use.</strong>
+        </p>
+        <p>
+          Due to the edge nature of this channel, changelogs may not always be available or functional.
+        </p>
+        <p>Are you sure?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Cancel</button>
+        <a id="activateEdge" class="btn btn-primary" title="Activate">Activate</a>
       </div>
     </div>
   </div>
@@ -276,45 +378,45 @@ $(document).ready(function(){
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-	{{#if autoUpdateEnabled}}
+        {{#if autoUpdateEnabled}}
         <h4 class="modal-title">Disable auto updates</h4>
-	{{else}}
-	<h4 class="modal-title">Enable auto updates</h4>
-	{{/if}}
+        {{ else }}
+        <h4 class="modal-title">Enable auto updates</h4>
+        {{/if}}
       </div>
       <div class="modal-body">
-	{{#if autoUpdateEnabled}}
-	<p>
-	  Currently Rockstor is configured to check for available system updates
-	  and automatically upgrade all packages on a daily basis. This will keep
-	  your entire system up to date. Disabling auto updates is only
-	  recommended when you have Testing updates activated.
-	</p>
-	{{else}}
-	{{#is_sub_active defaultSub}}
-	<div class="alert alert-danger">
-	  <p>
-	    Testing updates are activated on this system. Enabling auto updates
-	    is strongly discouraged while this is the case.
-	  </p>
-	</div>
-	{{/is_sub_active}}
-	<p>
-	  By enabling auto updates, Rockstor will check for available system
-	  updates and automatically upgrade all packages on a daily
-	  basis. Enabling this feature is recommended except when Testing
-	  updates are active.
-	</p>
-	{{/if}}
-      	<p>Are you sure?</p>
-	<div class="modal-footer">
-	  <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Cancel</button>
-	  {{#if autoUpdateEnabled}}
-	  <a id="disableAuto" class="btn btn-primary" title="Activate">Disable auto updates</a>
-	  {{else}}
-	  <a id="enableAuto" class="btn btn-primary" title="Activate">Enable auto updates</a>
-	  {{/if}}
-	</div>
+        {{#if autoUpdateEnabled}}
+        <p>
+          Currently, Rockstor is configured to check for available system updates
+          and automatically upgrade all packages on a daily basis. This will keep
+          your entire system up to date. Disabling auto updates is only
+          recommended when you have Testing updates activated.
+        </p>
+        {{ else }}
+        {{#is_sub_active defaultSub}}
+        <div class="alert alert-danger">
+          <p>
+            Testing updates are activated on this system. Enabling auto updates
+            is strongly discouraged while this is the case.
+          </p>
+        </div>
+        {{/is_sub_active}}
+        <p>
+          By enabling auto updates, Rockstor will check for available system
+          updates and automatically upgrade all packages on a daily
+          basis. Enabling this feature is recommended except when Testing
+          updates are active.
+        </p>
+        {{/if}}
+        <p>Are you sure?</p>
+        <div class="modal-footer">
+          <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Cancel</button>
+          {{#if autoUpdateEnabled}}
+          <a id="disableAuto" class="btn btn-primary" title="Activate">Disable auto updates</a>
+          {{ else }}
+          <a id="enableAuto" class="btn btn-primary" title="Activate">Enable auto updates</a>
+          {{/if}}
+        </div>
       </div>
     </div>
   </div>
