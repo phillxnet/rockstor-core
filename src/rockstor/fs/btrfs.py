@@ -1320,7 +1320,9 @@ def are_quotas_enabled(mnt_pt):
     """
     o, e, rc = run_command([BTRFS, "qgroup", "show", "-f", "--raw", mnt_pt])
     if rc == 0 and (
-        e[0] == "" or e[0] == "WARNING: qgroup data inconsistent, rescan recommended"
+        e[0] == ""
+        or e[0] == "WARNING: qgroup data inconsistent, rescan recommended"
+        or e[0] == "WARNING: rescan is running, qgroup data may be incorrect"
     ):
         return True
     # Note on above e[0] clauses:
