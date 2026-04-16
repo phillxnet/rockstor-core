@@ -1,5 +1,5 @@
 """
-Copyright (joint work) 2024 The Rockstor Project <https://rockstor.com>
+Copyright (joint work) 2026 The Rockstor Project <https://rockstor.com>
 
 Rockstor is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published
@@ -24,6 +24,8 @@ from subprocess import run, CalledProcessError, TimeoutExpired
 from time import sleep
 from xml.etree.ElementTree import fromstring, ElementTree
 from tempfile import mkstemp
+
+import settings
 from storageadmin.models import UpdateSubscription
 from system.exceptions import CommandException
 from system.osi import run_command
@@ -161,7 +163,7 @@ def rpm_build_info(pkg: str) -> tuple[str, str | None]:
 
 def zypper_repos_list(max_wait: int = 1) -> typing.List[str]:
     """
-    Simple wrapper for "zypper --xmlout lr Rockstor-Testing Rockstor-Stable".
+    Simple wrapper for "zypper --xmlout lr Rockstor-Edge Rockstor-Testing Rockstor-Stable".
     Retrieves a list of enabled Rockstor repositories.
     :return: list of enabled Rockstor repos by alias.
     """
@@ -169,7 +171,14 @@ def zypper_repos_list(max_wait: int = 1) -> typing.List[str]:
     stdout_value: str | None = None
     try:
         zypp_run = run(
-            ["zypper", "--xmlout", "lr", "Rockstor-Testing", "Rockstor-Stable"],
+            [
+                "zypper",
+                "--xmlout",
+                "lr",
+                "Rockstor-Edge",
+                "Rockstor-Testing",
+                "Rockstor-Stable",
+            ],
             capture_output=True,
             encoding="utf-8",  # stdout and stderr as string
             universal_newlines=True,
@@ -187,7 +196,9 @@ def zypper_repos_list(max_wait: int = 1) -> typing.List[str]:
         logger.error(f"Package system may be busy: {e}")
         return []
     if not stdout_value:
-        logger.info(f"Both Testing and Stable were inadvertently enabled")
+        logger.info(
+            f"More than one of Edge, Testing, & Stable were inadvertently enabled"
+        )
         stdout_value = zypp_run.stdout
     repo_tree = ElementTree(fromstring(stdout_value))
     repo_root = repo_tree.getroot()
@@ -201,7 +212,7 @@ def rockstor_repo_mgmt(
     zypp_cmd: str,
     repo_list: list[str] | None = None,
     url: str | None = None,
-    max_wait: int = 1,
+    max_wait: int = 2,
     retries: int = 2,
 ) -> bool:
     """
@@ -217,8 +228,8 @@ def rockstor_repo_mgmt(
     :param max_wait: Max seconds expected for each execution.
     :return: Bool if zypper return code indicates a change was made.
     """
-    if repo_list is None:
-        repo_list = ["Rockstor-Testing", "Rockstor-Stable"]
+    if repo_list is None or repo_list == []:
+        repo_list = ["Rockstor-Edge", "Rockstor-Testing", "Rockstor-Stable"]
     # Only the fist match case gets executed
     match zypp_cmd:
         case "removerepo":
@@ -342,7 +353,7 @@ def update_password_store(user, password):
 
 def switch_repo(subscription: UpdateSubscription, enable_repo: bool = True):
     logger.info(
-        f"++ switch_repo({subscription.name}, enable_repo={enable_repo}) called."
+        f"!!! switch_repo({subscription.name}, enable_repo={enable_repo}) called."
     )
     repos_dir = "/etc/yum.repos.d"
     # Yum repo clean-up scheduled for removal post 5.1.0-0 Stable release.
@@ -353,9 +364,18 @@ def switch_repo(subscription: UpdateSubscription, enable_repo: bool = True):
             os.remove(yum_file)
         repos_modified = rockstor_repo_mgmt(zypp_cmd="removerepo")
         if repos_modified:
-            logger.info("Repo config changed.")
+            logger.info("Repo config changed as all Rockstor-* repos removing.")
         return None
-    repo_alias = "Rockstor-{}".format(subscription.name)
+    repo_alias = f"Rockstor-{subscription.name}"
+    other_repo_aliases: list[str] = [
+        f"Rockstor-{info['name']}"
+        for info in settings.UPDATE_CHANNELS.values()
+        if info["name"] != subscription.name
+    ]
+    current_repo_list = zypper_repos_list()
+    repos_to_remove: list[str] = [
+        alias for alias in other_repo_aliases if alias in current_repo_list
+    ]
     # Historically our base subscription url denotes our CentOS rpm repo.
     subscription_distro_url = subscription.url
     distro_id = distro.id()
@@ -367,7 +387,6 @@ def switch_repo(subscription: UpdateSubscription, enable_repo: bool = True):
     elif distro_id == "opensuse-tumbleweed" or distro_id == "opensuse-slowroll":
         subscription_distro_url += "/tumbleweed"
     # From Tumblweed/Slowroll 20250329-0 onwards remove all DNF/YUM use.
-    current_repo_list = zypper_repos_list()
     # As from Leap15.4, update repositories are multi-arch. Maintain 15.3_aarch for now.
     if distro_version == "15.3" and machine_arch != "x86_64":
         subscription_distro_url += "_{}".format(machine_arch)
@@ -377,18 +396,25 @@ def switch_repo(subscription: UpdateSubscription, enable_repo: bool = True):
         repo_url = f"http://{subscription_distro_url}"
     logger.debug(f"REPO_URL={repo_url}")
     repos_modified: bool = False
+    # Remove all other repos in the current_repos_list, if any exist:
+    if repos_to_remove:  # Avoids call if there are no repos to remove.
+        logger.info(f"--- Removing repos {repos_to_remove}.")
+        repos_modified = rockstor_repo_mgmt(
+            zypp_cmd="removerepo", repo_list=repos_to_remove
+        )
+        if not repos_modified:  # Bail to avoid compounding a repo change problem.
+            e_msg = (
+                f"Failed to removing {repos_to_remove}. Aborting change. "
+                f"Retry your Activation as the package system was likely busy."
+            )
+            raise Exception(e_msg)
     if subscription.name == "Stable":
         # TODO: After 5.6.0-0 Stable this can be moved to after update_zypp_auth_file().
         # Required for now to update password-store on existing Stable systems.
-        logger.info("Syncing password-store auth for Web-UI changelog feature.")
+        logger.info("*** Syncing password-store auth for Web-UI changelog feature.")
         update_password_store(subscription.appliance.uuid, subscription.password)
         if repo_alias not in current_repo_list:
-            logger.info("++++ Enabling Stable as not in current repo list")
-            if "Rockstor-Testing" in current_repo_list:
-                logger.info("--- Testing enabled - removing repo")
-                repos_modified = rockstor_repo_mgmt(
-                    zypp_cmd="removerepo", repo_list=["Rockstor-Testing"]
-                )
+            logger.info("+++ Enabling Stable as not in current repo list")
             update_zypp_auth_file(subscription.appliance.uuid, subscription.password)
             repos_modified = rockstor_repo_mgmt(
                 zypp_cmd="addrepo",
@@ -397,31 +423,25 @@ def switch_repo(subscription: UpdateSubscription, enable_repo: bool = True):
             )
         else:
             logger.info("*** Stable repo already enabled.")
-        if repos_modified:
-            logger.info("Repo config changed.")
-    elif subscription.name == "Testing":
+    elif subscription.name == "Testing" or subscription.name == "Edge":
         if repo_alias not in current_repo_list:
-            logger.info("++++ Enabling Testing as not in current repo list")
-            if "Rockstor-Stable" in current_repo_list:
-                logger.info("--- Stable enabled - removing repo")
-                repos_modified = rockstor_repo_mgmt(
-                    zypp_cmd="removerepo", repo_list=["Rockstor-Stable"]
-                )
+            logger.info(f"+++ Enabling {repo_alias} as not in current repo list")
             repos_modified = rockstor_repo_mgmt(
                 zypp_cmd="addrepo", repo_list=[repo_alias], url=repo_url
             )
         else:
-            logger.info("*** Testing already enabled.")
-        if repos_modified:
-            logger.info("Repo config changed.")
+            logger.info(f"*** {repo_alias} already enabled.")
     else:
         logger.info(f"The subscription name ({subscription.name}) is unknown.")
-        # Possible 'Edge' release.
         return None
+    if repos_modified:
+        logger.info("*** Repo config changed.")
+    else:
+        logger.info("*** Repo config NOT changed.")
     return None
 
 
-def repo_status(subscription):
+def repo_status(subscription: UpdateSubscription):
     if subscription.password is None:
         return "active", "public repo"
     try:
@@ -458,8 +478,6 @@ def rockstor_pkg_update_check(
     :return:
     """
     machine_arch = platform.machine()
-    if subscription is not None:
-        switch_repo(subscription)
     pkg = f"rockstor*{machine_arch}"
     rpm_installed: bool = False  # Until we find otherwise
     version, date = rpm_build_info(pkg)
@@ -471,7 +489,7 @@ def rockstor_pkg_update_check(
     # Retrieve changelog via zypper-changelog-lib
     if subscription is None:
         return version, version, updates
-    # Rockstor's Repo alias is either "Rockstor-Testing" or "Rockstor-Stable".
+    # Rockstor's Repo alias are "Rockstor-Edge", "Rockstor-Testing" & "Rockstor-Stable".
     zyppchange = get_zypper_changelog(
         pkg_list=["rockstor"],
         repo_list=[f"Rockstor-{subscription.name}"],
@@ -487,9 +505,7 @@ def rockstor_pkg_update_check(
     return version, new_version, changelog_list
 
 
-def update_run(subscription=None, update_all_other=False):
-    if subscription is not None:
-        switch_repo(subscription)
+def update_run(update_all_other=False):
     run_command([SYSTEMCTL, "start", "atd"])
     fh, npath = mkstemp()
     # Set system-wide package manager refresh command according to distro.

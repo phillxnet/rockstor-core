@@ -1,5 +1,5 @@
 """
-Copyright (joint work) 2024 The Rockstor Project <https://rockstor.com>
+Copyright (joint work) 2026 The Rockstor Project <https://rockstor.com>
 
 Rockstor is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published
@@ -35,18 +35,30 @@ class UpdateSubscriptionListView(rfc.GenericView):
     def get_queryset(self, *args, **kwargs):
         return UpdateSubscription.objects.all()
 
-    def _toggle_repos(self, on="stable", off="testing", password=None):
-        # toggle between testing and stable repos
-        ncd = settings.UPDATE_CHANNELS[on]
-        fcd = settings.UPDATE_CHANNELS[off]
-        try:
-            offo = UpdateSubscription.objects.get(name=fcd["name"])
-            offo.status = "inactive"
-            offo.save()
-            ## enable_repos False removes both repositories.
-            switch_repo(offo, enable_repo=False)
-        except UpdateSubscription.DoesNotExist:
-            pass
+    def _toggle_repos(self, on:str = "stable", password:str | None = None):
+        """
+        Toggle between settings.UPDATE_CHANNELS repos tiers. Initially in DB,
+        then pass the intended only tier DB object on-to system.pkg_mgmt.switch_repo()
+        to do the system level package repository changes themselves.
+        :param on: UPDATE_CHANNELS identifier string.
+        :param password:
+        :return:
+        """
+        on_channel = settings.UPDATE_CHANNELS[on]
+        # e.g. off_channel_names default value would be: ['Testing', 'Edge']
+        off_channel_names: list[str] = [
+            info["name"]
+            for channel, info in settings.UPDATE_CHANNELS.items()
+            if channel != on
+        ]
+        for name in off_channel_names:
+            try:
+                off_object = UpdateSubscription.objects.get(name=name)
+                if off_object.status != "inactive":
+                    off_object.status = "inactive"
+                    off_object.save(update_fields=["status"])
+            except UpdateSubscription.DoesNotExist:  # no interest if no prior entry.
+                pass
         try:
             appliance = Appliance.objects.get(current_appliance=True)
         except:
@@ -54,22 +66,22 @@ class UpdateSubscriptionListView(rfc.GenericView):
                 status_code=400, detail="Error retrieving current Appliance ID"
             )
         try:
-            ono = UpdateSubscription.objects.get(name=ncd["name"])
+            on_object = UpdateSubscription.objects.get(name=on_channel["name"])
         except UpdateSubscription.DoesNotExist:
-            ono = UpdateSubscription(
-                name=ncd["name"],
-                description=ncd["description"],
-                url=ncd["url"],
+            on_object = UpdateSubscription(
+                name=on_channel["name"],
+                description=on_channel["description"],
+                url=on_channel["url"],
                 appliance=appliance,
                 status="active",
             )
-        ono.password = password
-        status, text = repo_status(ono)
-        ono.status = status
-        ono.save()
+        on_object.password = password
+        status, text = repo_status(on_object)
+        on_object.status = status
+        on_object.save()
         if status == "inactive":
             e_msg = (
-                f"Activation code ({ono.password}) could not be authorized for your "
+                f"Activation code ({on_object.password}) could not be authorized for your "
                 f"appliance ({appliance.uuid}). Verify the code and try again. If the "
                 "problem persists, email support@rockstor.com with this "
                 "message."
@@ -78,34 +90,38 @@ class UpdateSubscriptionListView(rfc.GenericView):
         if status != "active":
             e_msg = f"Failed to activate subscription. Status code: {status} details: {text}"
             raise Exception(e_msg)
-        switch_repo(ono)
-        return ono
+        switch_repo(on_object)
+        return on_object
 
     @transaction.atomic
     def post(self, request, command):
         with self._handle_exception(request):
-            if command == "activate-stable":
-                password = request.data.get("activation_code", None)
-                if password is None:
-                    e_msg = "Activation code is required for Stable subscription."
-                    handle_exception(Exception(e_msg), request, status_code=400)
-                # remove any leading or trailing white spaces. happens enough
-                # times due to copy-paste.
-                password = password.strip()
-                stableo = self._toggle_repos(password=password)
-                return Response(UpdateSubscriptionSerializer(stableo).data)
-
-            if command == "activate-testing":
-                testingo = self._toggle_repos(on="testing", off="stable")
-                return Response(UpdateSubscriptionSerializer(testingo).data)
-
-            if command == "check-status":
-                name = request.data.get("name")
-                stableo = UpdateSubscription.objects.get(name=name)
-                if stableo.password is not None:
-                    stableo.status, text = repo_status(stableo)
-                    stableo.save()
-                return Response(UpdateSubscriptionSerializer(stableo).data)
+            match command:
+                case "activate-stable":
+                    password = request.data.get("activation_code", None)
+                    if password is None:
+                        e_msg = "Activation code is required for Stable subscription."
+                        handle_exception(Exception(e_msg), request, status_code=400)
+                    # remove any leading or trailing white spaces. happens enough
+                    # times due to copy-paste.
+                    password = password.strip()
+                    # Defaults to on="stable".
+                    stableo = self._toggle_repos(password=password)
+                    return Response(UpdateSubscriptionSerializer(stableo).data)
+                case "activate-testing":
+                    testingo = self._toggle_repos(on="testing")
+                    return Response(UpdateSubscriptionSerializer(testingo).data)
+                case "activate-edge":
+                    edgeo = self._toggle_repos(on="edge")
+                    return Response(UpdateSubscriptionSerializer(edgeo).data)
+                case "check-stable":
+                    name = request.data.get("name")
+                    stableo = UpdateSubscription.objects.get(name=name)
+                    if stableo.password is not None:
+                        stableo.status, text = repo_status(stableo)
+                        stableo.save()
+                    return Response(UpdateSubscriptionSerializer(stableo).data)
+            return Response()
 
 
 class UpdateSubscriptionDetailView(rfc.GenericView):

@@ -1,5 +1,5 @@
 """
-Copyright (joint work) 2024 The Rockstor Project <https://rockstor.com>
+Copyright (joint work) 2026 The Rockstor Project <https://rockstor.com>
 
 Rockstor is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published
@@ -462,6 +462,11 @@ UPDATE_CHANNELS = {
         "name": "Testing",
         "description": "Subscription channel for testing updates",
         "url": "updates.rockstor.com:8999/rockstor-testing",
+    },
+    "edge": {
+        "name": "Edge",
+        "description": "Subscription channel for edge updates",
+        "url": "updates.rockstor.com:8999/rockstor-edge",
     },
 }
 

@@ -22,8 +22,14 @@ from storageadmin.auth import DigestAuthentication
 from rest_framework.permissions import IsAuthenticated
 from storageadmin.views import DiskMixin
 from system.osi import uptime, kernel_info, get_device_mapper_map
-from fs.btrfs import mount_share, mount_root, get_dev_pool_info, get_pool_raid_levels, mount_snap, \
-    get_pool_raid_profile
+from fs.btrfs import (
+    mount_share,
+    mount_root,
+    get_dev_pool_info,
+    get_pool_raid_levels,
+    mount_snap,
+    get_pool_raid_profile,
+)
 from system.ssh import sftp_mount_map, sftp_mount
 from system.osi import (
     system_shutdown,
@@ -44,7 +50,11 @@ from storageadmin.util import handle_exception
 from datetime import datetime, timezone
 from django.conf import settings
 from django.db import transaction
-from storageadmin.views.share_helpers import sftp_snap_toggle, import_shares, import_snapshots
+from storageadmin.views.share_helpers import (
+    sftp_snap_toggle,
+    import_shares,
+    import_snapshots,
+)
 from rest_framework_custom.oauth_wrapper import RockstorOAuth2Authentication
 from system.pkg_mgmt import (
     auto_update,
@@ -247,22 +257,15 @@ class CommandView(DiskMixin, NFSExportMixin, APIView):
 
         if command == "update-check":
             try:
-                subo: None | UpdateSubscription = None
+                sub_object: None | UpdateSubscription = None
                 try:
-                    subo = UpdateSubscription.objects.get(
-                        name="Stable", status="active"
-                    )
+                    sub_object = UpdateSubscription.objects.get(status="active")
                 except UpdateSubscription.DoesNotExist:
-                    try:
-                        subo = UpdateSubscription.objects.get(
-                            name="Testing", status="active"
-                        )
-                    except UpdateSubscription.DoesNotExist:
-                        pass
-                return Response(rockstor_pkg_update_check(subscription=subo))
+                    pass
+                return Response(rockstor_pkg_update_check(subscription=sub_object))
             except Exception as e:
-                e_msg = ("Unable to check update due to a system error: ({}).").format(
-                    e.__str__()
+                e_msg = (
+                    f"Unable to check update due to a system error: ({e.__str__()})."
                 )
                 handle_exception(Exception(e_msg), request)
 
