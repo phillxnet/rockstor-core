@@ -51,7 +51,7 @@
         Rockstor package
         <a href="https://rockstor.com/docs/update-channels/update_channels.html" target="_blank"> update channels. </a>
         Activate appropriately for your needs and/or intentions.
-        <br>- <strong>Stable updates</strong>: Intended for production use (<i>non-profit</i> subscription).
+        <br>- <strong>Stable updates</strong>: Intended for production use (free - <i>donation requested</i>).
         <br>- <strong>Testing updates</strong>: Field-testing towards future Stable releases (free).
         <br>- <strong>Edge updates</strong>: Untested releases - developers only (free).
         <br>See our <a href="https://forum.rockstor.com/" target="_blank">friendly forum</a> for advise.
@@ -62,6 +62,10 @@
         are a <i>non-profit</i> community endeavour fiscally hosted by
         <a href="https://opensourceeurope.org/" target="_blank"> Open Source Europe (OSE).</a>
       </strong>
+      <br>
+      <i>See our
+        <a href="https://opencollective.com/the-rockstor-project" target="_blank">OPEN COLLECTIVE</a>
+        for donation options.</i>
     </div>
     {{/no_sub_active}}
 
@@ -226,6 +230,10 @@
         are activated - install is eligible for
         <a href="https://rockstor.com/paid_support.html" target="_blank"><i>Paid Support.</i></a>
       </strong>
+      <br><br>
+      <i>See our
+        <a href="https://opencollective.com/the-rockstor-project" target="_blank">OPEN COLLECTIVE</a>
+        for donation options.</i>
     <hr>
     The following development orientated channels are available:<br>
     <dl>
@@ -271,26 +279,52 @@
       <div class="modal-header">
         <h3 class="modal-title">Activate Stable updates.</h3>
       </div>
+      <br>
+      <div style="font-size: 15px; font-weight:bold; text-align: center;">
+        Stable updates are intended for production use.
+      </div>
       <div style="font-size: 13px" class="modal-body">
-        <p>
-          Please follow these steps to activate Stable Updates.<br>
-        <div style="text-align: center;">
-          <strong><i>Steps 1 & 2 will each send confirmation / information emails.</i></strong>
+        For our first two years we were 'Donations Only' and failed to achieve sustainability.
+        In 2015, after
+        <a href="https://forum.rockstor.com/t/would-you-pay-a-one-time-charge-for-stable-updates/448" target="_blank">community consultation</a>,
+        we introduced the curated Stable channel intended for production use and conditional on a paid "Stable Updates subscription".
+        We also added a free access Testing channel intended for development towards Stable status.
+        <br><br>
+        <div style="font-weight:bold; text-align: center;">
+          In 2023,
+          <a href="https://rockstor.com/about-us.html" target="_blank">we</a>
+          became a <i>non-profit</i> fiscally hosted by
+          <a href="https://opensourceeurope.org/" target="_blank">Open Source Europe (OSE).</a>
         </div>
-        </p>
-        <ol>
-          <li>Become a "Stable Updates subscription" contributor / member at our
-            <a href="https://opencollective.com/the-rockstor-project/contribute" target="_blank">Open Collective.</a>
-          </li>
-          <li>Enter / Edit / Check your <span style="color:green">Current Appliance ID</span> in your
-            <a href="https://appman.rockstor.com/" target="_blank">Appliance ID manager</a> <strong>Appman</strong>.
-          </li>
-          <li>Enter your Activation code below, emailed by <strong>Appman</strong> immediately after step 2.</li>
-        </ol>
-        Thank you for helping to support Rockstor's non-profit development.
+        <br>
+        Help to keep our digital sovereignty endeavour from falling to a for-profit for its maintenance,
+        continued development, distribution, etc.
+        Our code has always been
+        <a href="https://rockstor.com/docs/interface/system/update_channels.html#licensed-fsf-free-libre-osi-approved" target="_blank">FSF Free/Libre & OSI approved</a>,
+        but a project is more than its code!
+        Real folks from around the world contribute their time.
+        And distribution, infrastructure, and online services / servers are not free.
+        Backend support systems, webpages, docs , guides, how-tos etc all also require folks time, attention, and resources.
+        And someone has to be on call for whatever, whenever. where-ever!
+        <br><br>
+        We are an ongoing community endeavour that has ongoing costs, human included;
+        so recurring donations are preferred.
+        Be part of our sustainability if you can. <i>Every little helps. And little and often is good.</i>
+        <br><br>
+        <div style="font-weight:bold; text-align: center;">
+          <i>Consider contributing to our
+            <a href="https://opencollective.com/the-rockstor-project" target="_blank">OPEN COLLECTIVE</a> via a donation.</i>
+        </div>
+        <br>
+        <strong>
+          In 2026, we returned to a 'Donations Only' model with the hope that folks understand that endeavours such as ours
+          depend absolutely on receiving fiscal support to survive.
+        </strong>
+        <br><br>
+        Please enter "I understand" to proceed with this activation:
         <form id="activate-stable-form" name="aform" class="form-horizontal">
           <div class="form-group">
-            <label class="col-sm-4 control-label" for="activation-code">Activation Code <span class="required">*</span></label>
+            <label class="col-sm-4 control-label" for="activation-code">Acknowledgement <span class="required">*</span></label>
             <div class="col-sm-4">
               {{#if stableSub}}
               <input class="form-control" type="text" id="activation-code" value="{{ stableSub.password }}"
@@ -300,12 +334,6 @@
               {{/if}}
             </div>
           </div>
-          <p style="color:green">Current Appliance ID: {{ applianceId }}</p>
-          <br>
-          Note your complementary self-service <a href="https://appman.rockstor.com/" target="_blank">Appliance ID
-          manager</a> <strong>Appman</strong>.
-          <br>
-          The above 'Current Appliance ID' should match that within Appman for this computer.
           <div class="modal-footer">
             <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">Cancel</button>
             <a id="activateStable" class="btn btn-primary" title="Activate">Activate</a>
@@ -328,7 +356,7 @@
           Testing releases are inherited periodically from the Edge update channel.
           As such, early-on in each testing phases, there can still be significant known, and unknown issues.
           <strong>Be advised that production use of Testing updates is discouraged.</strong>
-          Stable updates, intended for production, are take from the end of each testing phase.
+          Stable updates, intended for production, are taken from the end of each testing phase.
         </p>
         <p>
           Whenever an update is released, be sure to read the changelog carefully before proceeding.

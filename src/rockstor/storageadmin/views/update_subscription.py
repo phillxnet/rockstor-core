@@ -99,8 +99,8 @@ class UpdateSubscriptionListView(rfc.GenericView):
             match command:
                 case "activate-stable":
                     password = request.data.get("activation_code", None)
-                    if password is None:
-                        e_msg = "Activation code is required for Stable subscription."
+                    if password is None or password == "":
+                        e_msg = "Acknowledgement is required for Stable subscription."
                         handle_exception(Exception(e_msg), request, status_code=400)
                     # remove any leading or trailing white spaces. happens enough
                     # times due to copy-paste.

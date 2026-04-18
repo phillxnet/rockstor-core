@@ -442,8 +442,14 @@ def switch_repo(subscription: UpdateSubscription, enable_repo: bool = True):
 
 
 def repo_status(subscription: UpdateSubscription):
-    if subscription.password is None:
+    # We need not check authentication credentials when they are not requried.
+    # Post Stable repo dropping authentication, ready for V5.5.1-0,
+    # we treat Stable as we have Testing and more recently Edge.
+    if subscription.password is None or subscription.password == "I understand":
         return "active", "public repo"
+    # TODO: we will have no need for the following once the Stable repo drops auth.
+    #  Keeping for now, and marking for deprecation later.
+    #  Or we modify to just test for ability to reach the given repo.
     try:
         res = requests.get(
             "http://{}".format(subscription.url),
