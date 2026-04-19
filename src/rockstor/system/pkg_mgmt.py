@@ -442,7 +442,7 @@ def switch_repo(subscription: UpdateSubscription, enable_repo: bool = True):
 
 
 def repo_status(subscription: UpdateSubscription):
-    # We need not check authentication credentials when they are not requried.
+    # We need not check authentication credentials when they are not required.
     # Post Stable repo dropping authentication, ready for V5.5.1-0,
     # we treat Stable as we have Testing and more recently Edge.
     if subscription.password is None or subscription.password == "I understand":
