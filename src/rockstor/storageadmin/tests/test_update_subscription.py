@@ -60,7 +60,7 @@ class UpdateSubscriptionTests(APITestMixin):
             response.status_code, status.HTTP_400_BAD_REQUEST, msg=response.data
         )
 
-        e_msg = "Activation code is required for Stable subscription."
+        e_msg = "Acknowledgement is required for Stable subscription."
         self.assertEqual(response.data[0], e_msg)
 
         # # repo staturn returning inactive
