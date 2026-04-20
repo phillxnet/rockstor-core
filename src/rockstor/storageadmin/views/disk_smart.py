@@ -1,5 +1,5 @@
 """
-Copyright (joint work) 2024 The Rockstor Project <https://rockstor.com>
+Copyright (joint work) 2026 The Rockstor Project <https://rockstor.com>
 
 Rockstor is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published
@@ -40,7 +40,7 @@ from system.smart import (
     test_logs,
     run_test,
 )
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 import logging
 
@@ -75,7 +75,7 @@ class DiskSMARTDetailView(rfc.GenericView):
         e_summary, e_lines = error_logs(disk.name, disk.smart_options)
         smartid = info(disk.name, disk.smart_options)
         test_d, log_lines = test_logs(disk.name, disk.smart_options)
-        ts = datetime.utcnow().replace(tzinfo=timezone.utc)
+        ts = datetime.now(UTC)
         si = SMARTInfo(disk=disk, toc=ts)
         si.save()
         for k in sorted(attributes.keys(), reverse=True):

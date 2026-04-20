@@ -1,5 +1,5 @@
 """
-Copyright (joint work) 2024 The Rockstor Project <https://rockstor.com>
+Copyright (joint work) 2026 The Rockstor Project <https://rockstor.com>
 
 Rockstor is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published
@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
 import sys
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from scripts.scheduled_tasks import crontabwindow
 from smart_manager.models import Task, TaskDefinition
 from cli.api_wrapper import APIWrapper
@@ -110,7 +110,7 @@ def main():
             )
             return
 
-        now = datetime.utcnow().replace(second=0, microsecond=0, tzinfo=timezone.utc)
+        now = datetime.now(UTC).replace(second=0, microsecond=0)
         schedule = now + timedelta(minutes=3)
         t = Task(task_def=tdo, state="scheduled", start=now, end=schedule)
 
@@ -154,7 +154,7 @@ def main():
             logger.exception(e)
 
         finally:
-            # t.end = datetime.utcnow().replace(tzinfo=utc)
+            # t.end = datetime.now(UTC)
             t.save()
 
     else:
