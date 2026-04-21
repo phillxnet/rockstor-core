@@ -1,5 +1,5 @@
 """
-Copyright (joint work) 2024 The Rockstor Project <https://rockstor.com>
+Copyright (joint work) 2026 The Rockstor Project <https://rockstor.com>
 
 Rockstor is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published
@@ -17,12 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import sys
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from scripts.scheduled_tasks import crontabwindow
 from storageadmin.models import Share, Snapshot
 from smart_manager.models import Task, TaskDefinition
 from cli.api_wrapper import APIWrapper
-from django.utils.timezone import utc
 from django.conf import settings
 import logging
 
@@ -111,7 +110,7 @@ def main():
         max_count = int(float(meta["max_count"]))
         prefix = "%s_" % meta["prefix"]
 
-        now = datetime.utcnow().replace(second=0, microsecond=0, tzinfo=utc)
+        now = datetime.now(UTC).replace(second=0, microsecond=0)
         t = Task(task_def=tdo, state="started", start=now)
 
         snap_created = False
@@ -141,7 +140,7 @@ def main():
             logger.error("Failed to create snapshot at %s" % url)
             logger.exception(e)
         finally:
-            t.end = datetime.utcnow().replace(tzinfo=utc)
+            t.end = datetime.now(UTC)
             t.save()
 
         # best effort pruning without erroring out. If deletion fails, we'll

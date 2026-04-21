@@ -1,5 +1,5 @@
 """
-Copyright (joint work) 2024 The Rockstor Project <https://rockstor.com>
+Copyright (joint work) 2026 The Rockstor Project <https://rockstor.com>
 
 Rockstor is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published
@@ -19,11 +19,10 @@ from multiprocessing import Process, Queue
 import zmq
 import os
 import time
-from datetime import datetime
+from datetime import datetime, UTC
 from smart_manager.models import SProbe
 from django.conf import settings
-from django.utils.timezone import utc
-from stap_worker import StapWorker
+from smart_manager.stap_worker import StapWorker
 import logging
 
 logger = logging.getLogger(__name__)
@@ -45,7 +44,7 @@ class Stap(Process):
                 if ec != 0:
                     ro = SProbe.objects.get(id=w)
                     ro.state = "error"
-                    ro.end = datetime.utcnow().replace(tzinfo=utc)
+                    ro.end = datetime.now(UTC)
                     self._sink_put(sink_socket, ro)
                 del self.workers[w]
 
@@ -115,7 +114,7 @@ class Stap(Process):
                 ro.state = "running"
             else:
                 ro.state = "error"
-                ro.end = datetime.utcnow().replace(tzinfo=utc)
+                ro.end = datetime.now(UTC)
             return self._sink_put(sink_socket, ro)
 
         if task["action"] == "stop":
@@ -124,5 +123,5 @@ class Stap(Process):
                 sworker.task["queue"].put("stop")
             ro = SProbe.objects.get(id=task["roid"])
             ro.state = "stopped"
-            ro.end = datetime.utcnow().replace(tzinfo=utc)
+            ro.end = datetime.now(UTC)
             return self._sink_put(sink_socket, ro)

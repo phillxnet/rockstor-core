@@ -1,5 +1,5 @@
 """
-Copyright (joint work) 2024 The Rockstor Project <https://rockstor.com>
+Copyright (joint work) 2026 The Rockstor Project <https://rockstor.com>
 
 Rockstor is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published
@@ -20,7 +20,7 @@ from django.conf import settings
 from rest_framework.response import Response
 from smart_manager.models import ReplicaShare, ReceiveTrail
 from smart_manager.serializers import ReceiveTrailSerializer
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 import rest_framework_custom as rfc
 
 
@@ -37,7 +37,7 @@ class ReceiveTrailListView(rfc.GenericView):
     def post(self, request, rid):
         with self._handle_exception(request):
             rs = ReplicaShare.objects.get(id=rid)
-            ts = datetime.utcnow().replace(tzinfo=timezone.utc)
+            ts = datetime.now(UTC)
             snap_name = request.data.get("snap_name")
             rt = ReceiveTrail(
                 rshare=rs, snap_name=snap_name, status="pending", receive_pending=ts
@@ -50,7 +50,7 @@ class ReceiveTrailListView(rfc.GenericView):
         with self._handle_exception(request):
             days = int(request.data.get("days", 30))
             rs = ReplicaShare.objects.get(id=rid)
-            ts = datetime.utcnow().replace(tzinfo=timezone.utc)
+            ts = datetime.now(UTC)
             ts0 = ts - timedelta(days=days)
             if ReceiveTrail.objects.filter(rshare=rs).count() > 100:
                 ReceiveTrail.objects.filter(rshare=rs, end_ts__lt=ts0).delete()
@@ -78,7 +78,7 @@ class ReceiveTrailDetailView(rfc.GenericView):
     def put(self, request, rtid):
         with self._handle_exception(request):
             rt = ReceiveTrail.objects.get(id=rtid)
-            ts = datetime.utcnow().replace(tzinfo=timezone.utc)
+            ts = datetime.now(UTC)
             if "receive_succeeded" in request.data:
                 rt.receive_succeeded = ts
             rt.status = request.data.get("status", rt.status)

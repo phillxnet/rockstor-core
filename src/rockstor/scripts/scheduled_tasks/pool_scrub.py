@@ -1,5 +1,5 @@
 """
-Copyright (joint work) 2024 The Rockstor Project <https://rockstor.com>
+Copyright (joint work) 2026 The Rockstor Project <https://rockstor.com>
 
 Rockstor is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published
@@ -18,11 +18,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 import time
 import sys
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from scripts.scheduled_tasks import crontabwindow
 from smart_manager.models import Task, TaskDefinition
 from cli.api_wrapper import APIWrapper
-from django.utils.timezone import utc
 import logging
 
 logger = logging.getLogger(__name__)
@@ -71,7 +70,7 @@ def main():
                         "A new task will not be run." % (cur_state, tid)
                     )
 
-        now = datetime.utcnow().replace(second=0, microsecond=0, tzinfo=utc)
+        now = datetime.now(UTC).replace(second=0, microsecond=0)
         t = Task(task_def=tdo, state="started", start=now)
         url = "pools/%s/scrub" % meta["pool"]
         try:
@@ -89,7 +88,7 @@ def main():
             cur_state = update_state(t, meta["pool"], aw)
             if cur_state in TERMINAL_SCRUB_STATES:
                 logger.debug("task(%d) finished with state(%s)." % (tid, cur_state))
-                t.end = datetime.utcnow().replace(tzinfo=utc)
+                t.end = datetime.now(UTC)
                 t.save()
                 break
             logger.debug(

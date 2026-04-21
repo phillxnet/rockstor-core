@@ -1,5 +1,5 @@
 """
-Copyright (joint work) 2024 The Rockstor Project <https://rockstor.com>
+Copyright (joint work) 2026 The Rockstor Project <https://rockstor.com>
 
 Rockstor is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published
@@ -47,7 +47,7 @@ from storageadmin.models import (
     AdvancedNFSExport,
 )
 from storageadmin.util import handle_exception
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from django.conf import settings
 from django.db import transaction
 from storageadmin.views.share_helpers import (
@@ -244,7 +244,7 @@ class CommandView(DiskMixin, NFSExportMixin, APIView):
             return Response()
 
         if command == "utcnow":
-            return Response(datetime.utcnow().replace(tzinfo=timezone.utc))
+            return Response(datetime.now(UTC))
 
         if command == "uptime":
             return Response(uptime())
