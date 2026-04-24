@@ -88,10 +88,11 @@ fi
 /usr/bin/gpg --quick-generate-key --batch --passphrase '' rockstor@localhost || true
 # Init 'pass' in .env defined PASSWORD_STORE_DIR using above GPG key, and generate Django SECRET_KEY
 set -o allexport
-echo "Sourcing $(pwd).env"
-source .env  # also read by rockstor-build.service
+echo "Sourcing $(pwd)/.env"
+source $(pwd)/.env  # also read by rockstor-build.service via "EnvironmentFile=/opt/rockstor/.env"
 set +o allexport
-/usr/bin/pass init rockstor@localhost
+# Ensure password-store is initialized:
+/usr/bin/pass init rockstor@localhost || true
 /usr/bin/pass generate --no-symbols --force python-keyring/rockstor/SECRET_KEY 100
 
 # Collect all static files in the STATIC_ROOT subdirectory. See settings.py.
@@ -107,6 +108,6 @@ echo "If installing from source, from scratch, for development; i.e. NOT via RPM
 echo "Note GnuPG & password-store ExecStartPre steps in /opt/rockstor/conf/rockstor-pre.service"
 echo "1. Run 'systemctl start postgresql'."
 echo "2. Run 'cd /opt/rockstor'."
-echo "3. Run './build.sh'."
+echo "3. Run 'sh ./build.sh'."
 echo "4. Run 'poetry run initrock' as root (equivalent to rockstor-pre.service ExecStart)."
 echo "5. Run 'systemctl enable --now rockstor-bootstrap'."
