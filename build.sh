@@ -32,7 +32,7 @@ export PIPX_BIN_DIR=/usr/local/bin  # binary location for pipx-installed apps, d
 export PIPX_MAN_DIR=/usr/local/share/man  # manual page location for pipx-installed apps, default ~/.local/share/man
 # https://python-poetry.org/docs/#installing-with-pipx
 pipx ensurepath
-pipx install --force --python python3.11 poetry==2.3.2
+pipx install --force --python python3.11 poetry==2.3.4
 # https://pypi.org/project/poetry-plugin-dotenv/
 # https://python-poetry.org/docs/master/plugins/#using-plugins
 pipx inject --verbose poetry poetry-plugin-dotenv==3.3.0
