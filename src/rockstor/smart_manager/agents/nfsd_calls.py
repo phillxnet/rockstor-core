@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from smart_manager.models import (
     NFSDCallDistribution,
     NFSDClientDistribution,
@@ -27,7 +27,7 @@ from smart_manager.models import (
 
 
 def get_datetime(ts):
-    return datetime.datetime.utcfromtimestamp(float(ts)).replace(tzinfo=timezone.utc)
+    return datetime.datetime.fromtimestamp(float(ts), tz=UTC)
 
 
 def process_nfsd_calls(output, rid, l):
