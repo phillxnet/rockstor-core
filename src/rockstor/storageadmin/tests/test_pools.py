@@ -397,7 +397,7 @@ class PoolTests(APITestMixin):
             "Pa$sign",
             "/pool",
             ":pool",
-            "\pool",
+            r"\pool",
             "Pquestion?mark",
             "Pasteri*",
             "",
