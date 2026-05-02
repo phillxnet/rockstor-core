@@ -237,7 +237,7 @@ class ShareTests(APITestMixin):
             "Share 1",
             "a$sign" "/share",
             ":share",
-            "\share",
+            r"\share",
             "question?mark",
             "asterix*",
             "",

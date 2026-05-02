@@ -3886,10 +3886,10 @@ class OSITests(unittest.TestCase):
 
         # /etc/cron.d/rockstortab, True
         source_contents.append(
-            "42 3 * * 6 root /opt/rockstor/bin/st-system-power 1 \*-*-*-*-*-*"
+            r"42 3 * * 6 root /opt/rockstor/bin/st-system-power 1 \*-*-*-*-*-*"
         )
         target_contents.append(
-            "42 3 * * 6 root /opt/rockstor/.venv/bin/st-system-power 1 \*-*-*-*-*-*"
+            r"42 3 * * 6 root /opt/rockstor/.venv/bin/st-system-power 1 \*-*-*-*-*-*"
         )
         outputs.append(True)
 
@@ -3902,17 +3902,17 @@ class OSITests(unittest.TestCase):
 
         # /etc/cron.d/rockstortab, False
         source_contents.append(
-            "42 3 * * 6 root /opt/rockstor/.venv/bin/st-system-power 1 \*-*-*-*-*-*"
+            r"42 3 * * 6 root /opt/rockstor/.venv/bin/st-system-power 1 \*-*-*-*-*-*"
         )
         target_contents.append(None)
         outputs.append(False)
 
         # /etc/cron.d/rockstortab, True
         source_contents.append(
-            "42 3 * * 5 root /opt/rockstor//bin/st-pool-scrub 1 \*-*-*-*-*-*"
+            r"42 3 * * 5 root /opt/rockstor//bin/st-pool-scrub 1 \*-*-*-*-*-*"
         )
         target_contents.append(
-            "42 3 * * 5 root /opt/rockstor/.venv/bin/st-pool-scrub 1 \*-*-*-*-*-*"
+            r"42 3 * * 5 root /opt/rockstor/.venv/bin/st-pool-scrub 1 \*-*-*-*-*-*"
         )
         outputs.append(True)
 
