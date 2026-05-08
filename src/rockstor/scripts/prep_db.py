@@ -23,7 +23,6 @@ def register_services() -> None:
     services = {
         "NFS": "nfs",
         "Samba": "smb",
-        "NIS": "nis",
         "NTP": "ntpd",
         "Active Directory": "active-directory",
         "LDAP": "ldap",

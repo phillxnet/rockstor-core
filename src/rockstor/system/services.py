@@ -56,7 +56,6 @@ def init_service_op(service_name, command, throw=True):
         "nmb",
         "smb",
         "sshd",
-        "ypbind",
         "rpcbind",
         "ntpd",
         "snmpd",
@@ -117,14 +116,11 @@ def service_status(service_name, config=None):
     :param config:
     :return: out, err, rc
     """
-    if service_name == "nis" or service_name == "nfs":
+    if service_name == "nfs":
         out, err, rc = init_service_op("rpcbind", "status", throw=False)
         if rc != 0:
             return out, err, rc
-        if service_name == "nis":
-            return init_service_op("ypbind", "status", throw=False)
-        else:
-            return init_service_op("nfs-server", "status", throw=False)
+        return init_service_op("nfs-server", "status", throw=False)
     elif service_name == "ldap":
         o, e, rc = init_service_op("sssd", "status", throw=False)
         # initial check on sssd status: 0 = OK 3 = stopped 4 = no such unit
