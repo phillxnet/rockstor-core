@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "rockstor"
-version = "5.5.2"
+version = "5.5.3"
 description = "Btrfs Network Attached Storage (NAS) Appliance."
 readme = "README.md"
 # Source0: (rockstor-core) is GPL-3.0-or-later, Source1: (rockstor-jslibs) has mixed licensing:
