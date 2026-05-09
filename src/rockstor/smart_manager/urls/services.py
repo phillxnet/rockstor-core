@@ -23,7 +23,6 @@ from smart_manager.views import (
     DockerServiceView,
     LdapServiceView,
     NFSServiceView,
-    NISServiceView,
     NTPServiceView,
     NUTServiceView,
     ReplicationServiceView,
@@ -44,8 +43,6 @@ action_regex = "login|logout"
 
 urlpatterns = [
     # Services
-    re_path(r"^nis$", NISServiceView.as_view()),
-    re_path(r"^nis/(?P<command>%s)$" % command_regex, NISServiceView.as_view()),
     re_path(r"^smb$", SambaServiceView.as_view()),
     re_path(r"^smb/(?P<command>%s)$" % command_regex, SambaServiceView.as_view()),
     re_path(r"^nfs$", NFSServiceView.as_view()),

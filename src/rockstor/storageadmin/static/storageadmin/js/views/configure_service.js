@@ -57,10 +57,6 @@ ConfigureServiceView = RockstorLayoutView.extend({
             smb: {
                 workgroup: 'required'
             },
-            nis: {
-                domain: 'required',
-                server: 'required'
-            },
             snmpd: {
                 syslocation: 'required',
                 syscontact: 'required',
@@ -188,10 +184,6 @@ ConfigureServiceView = RockstorLayoutView.extend({
             yes_no_choices: this.yes_no_choices
         }));
 
-        this.$('#nis-form :input').tooltip({
-            html: true,
-            placement: 'right'
-        });
         this.$('#snmpd-form :input').tooltip({
             html: true,
             placement: 'right'

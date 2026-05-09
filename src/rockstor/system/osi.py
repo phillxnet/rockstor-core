@@ -140,34 +140,6 @@ Disk = collections.namedtuple(
 base_dev_patterns = [("sd|vd", "\d+"), ("nvme|md|mmcblk", "p\d+")]
 
 
-def inplace_replace(of, nf, regex, nl):
-    """
-    Replaces or adds (if regex[i] not found) the line matchin regex[i] while
-    otherwise copying the contents of of to nf
-    :param of: Original File path - Usually of a system configuration file.
-    :param nf: New File path - Usually of a secure temporary file setup by caller.
-    :param regex: Regex tuple - by which we find the target lines.
-    :param nl: New Line - tuple to replaced or be added to end of New File
-    :return:
-    """
-    # N.B. this procedure is currently only used in system/nis.py
-    with open(of) as afo, open(nf, "w") as tfo:
-        replaced = [False] * len(regex)
-        for l in afo.readlines():
-            ireplace = False
-            for i in range(0, len(regex)):
-                if re.match(regex[i], l) is not None:
-                    tfo.write(nl[i])
-                    replaced[i] = True
-                    ireplace = True
-                    break
-            if not ireplace:
-                tfo.write(l)
-        for i in range(0, len(replaced)):
-            if not replaced[i]:
-                tfo.write(nl[i])
-
-
 def replace_line_if_found(Original_file, new_file, regex, replacement_line):
     """
     Replaces regex identified line if found, otherwise does straight content copy.

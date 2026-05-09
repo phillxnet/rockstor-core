@@ -57,7 +57,6 @@ class ServicesTests(unittest.TestCase):
             "nmb",
             "smb",
             "sshd",
-            "ypbind",
             "rpcbind",
             "ntpd",
             "snmpd",

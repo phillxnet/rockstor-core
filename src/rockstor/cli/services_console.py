@@ -21,7 +21,6 @@ from smb_console import SMBConsole
 from sftp_console import SFTPConsole
 from rest_util import api_call
 from iscsi_console import IscsiConsole
-from nis_console import NISConsole
 from ntp_console import NTPConsole
 
 
@@ -39,9 +38,6 @@ class ServicesConsole(BaseConsole):
 
     def do_nfs(self, args):
         return self.sub_service(args, "nfs")
-
-    def do_nis(self, args):
-        return self.sub_service(args, "nis")
 
     def do_nginx(self, args):
         pass
@@ -69,8 +65,6 @@ class ServicesConsole(BaseConsole):
             sub_console = SFTPConsole(greeting)
         elif name == "iscsi":
             sub_console = IscsiConsole(greeting)
-        elif name == "nis":
-            sub_console = NISConsole(greeting)
         elif name == "ntp":
             sub_console = NTPConsole(greeting)
         else:

@@ -27,7 +27,6 @@ from smart_manager.views.nfs_uid_gid import NFSDUidGidDistributionView  # noqa E
 from smart_manager.views.load_avg import LoadAvgView  # noqa E501
 from smart_manager.views.sprobe_metadata import SProbeMetadataView, SProbeMetadataDetailView  # noqa E501
 from smart_manager.views.base_service import BaseServiceView, BaseServiceDetailView  # noqa E501
-from smart_manager.views.nis_service import NISServiceView  # noqa E501
 from smart_manager.views.samba_service import SambaServiceView  # noqa E501
 from smart_manager.views.nfs_service import NFSServiceView  # noqa E501
 from smart_manager.views.replication import ReplicaListView, ReplicaDetailView  # noqa E501
