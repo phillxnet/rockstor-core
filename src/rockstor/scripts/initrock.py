@@ -603,9 +603,11 @@ def main():
         for action, command in db_stage_items.items():
             logger.info(f"--DB-- Running - {action}")
             if action.startswith("migrate"):
-                run_command(command)
+                logger.debug(f"command: ({command})")
+                run_command(command, log=True)
             else:
-                run_command(["su", "-", "postgres", "-c", command])
+                logger.debug(f"command: (su - postgres -c \"{command}\")")
+                run_command(["su", "-", "postgres", "-c", command], log=True)
             logger.info(f"--DB-- Done with {action}.")
         logger.info(f"--DB-- {db_stage_name} Done --DB--.")
         if db_stage_name == "Setup Databases":
