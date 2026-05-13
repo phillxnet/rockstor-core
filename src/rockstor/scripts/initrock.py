@@ -71,7 +71,8 @@ IP = "/usr/sbin/ip"
 
 OVERWRITE_PG_HBA = f"cp -f {CONF_DIR}/pg_hba.conf /var/lib/pgsql/data/"
 PG_RELOAD = "pg_ctl reload"  # Does not require pg_hba.conf based authentication.
-RUN_SQL = "psql -w -f"  # Without password prompt and from file.
+# We attach to -d template1 to enable dropping all DBs in postgresql_setup.sql
+RUN_SQL = "psql -d template1 -w -f"  # Without password prompt and from file.
 #
 # We use psql the postgresql client command line program
 # See: https://www.postgresql.org/docs/13/app-psql.html
