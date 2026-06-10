@@ -564,6 +564,8 @@ def zypper_killed_cleanup():
     """
     # See: https://www.gnupg.org/documentation/manuals/gnupg/Agent-Signals.html
     # pkill (procps package) defaults to SIGTERM
+    # TODO: Now we are on Django 6.0 - remove all zypper forced time-outs and establish
+    #  Django task based management of, for example, updates available.
     out, err, rc = run_command(
         ["pkill -f 'gpg-agent --homedir /var/tmp/zypp'"], shell=True, throw=False
     )
@@ -571,6 +573,12 @@ def zypper_killed_cleanup():
         case 0:
             logger.info(
                 "Killed related gpg-agents post zypper process timeout/termination."
+            )
+            logger.info("Removing GPG pubring.db.lock file.")
+            run_command(
+                ["rm", "-f", "/root/.gnupg/public-keys.d/pubring.db.lock"],
+                throw=False,
+                log=True,
             )
         case 1:
             logger.info("No zypper related gpg-agents found or successfully signalled.")
