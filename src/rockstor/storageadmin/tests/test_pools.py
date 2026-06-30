@@ -564,23 +564,26 @@ class PoolTests(APITestMixin):
         """
         # We need this to construct our e_msg later
         allowed_options = {
-            "alloc_start": int,
             "autodefrag": None,
             "clear_cache": None,
             "commit": int,
             "compress-force": settings.COMPRESSION_TYPES,
             "degraded": None,
             "discard": None,
+            "enospc_debug": None,
             "fatal_errors": None,
-            "inode_cache": None,
+            "flushoncommit": None,
             "max_inline": int,
             "metadata_ratio": int,
             "noacl": None,
             "noatime": None,
+            "nobarrier": None,
             "nodatacow": None,
             "nodatasum": None,
+            "nologreplay": None,
             "nospace_cache": None,
             "nossd": None,
+            "notreelog": None,
             "ro": None,
             "rw": None,
             "skip_balance": None,
@@ -588,6 +591,8 @@ class PoolTests(APITestMixin):
             "ssd": None,
             "ssd_spread": None,
             "thread_pool": int,
+            "usebackuproot": None,
+            "user_subvol_rm_allowed": None,
             "": None,
         }
 
@@ -614,9 +619,9 @@ class PoolTests(APITestMixin):
         )
         self.assertEqual(response.data[0], e_msg)
 
-        # valid alloc_start but without value
-        data["mnt_options"] = "alloc_start"
-        e_msg = "Value for mount option (alloc_start) must be an integer."
+        # valid commit but without value
+        data["mnt_options"] = "commit"
+        e_msg = "Value for mount option (commit) must be an integer."
         response = self.client.post(self.BASE_URL, data=data)
         self.assertEqual(
             response.status_code,
@@ -625,8 +630,8 @@ class PoolTests(APITestMixin):
         )
         self.assertEqual(response.data[0], e_msg)
 
-        # valid alloc_start with non integer value
-        data["mnt_options"] = "alloc_start=derp"
+        # valid commit with non integer value
+        data["mnt_options"] = "commit=derp"
         response3 = self.client.post(self.BASE_URL, data=data)
         self.assertEqual(
             response3.status_code,
@@ -645,12 +650,12 @@ class PoolTests(APITestMixin):
         self.assertEqual(response.data["compression"], "zlib")
 
         valid_mnt_options = (
-            "alloc_start=3,autodefrag,clear_cache,commit=4,"
-            "degraded,discard,fatal_errors,inode_cache,"
-            "max_inline=2,metadata_ratio=5,noacl,noatime,"
-            "nodatacow,nodatasum,nospace_cache,nossd,ro,"
+            "autodefrag,clear_cache,commit=4,"
+            "degraded,discard,enospc_debug,fatal_errors,flushoncommit,"
+            "max_inline=2,metadata_ratio=5,noacl,noatime,nobarrier,"
+            "nodatacow,nodatasum,nologreplay,nospace_cache,nossd,notreelog,ro,"
             "rw,skip_balance,space_cache,ssd,ssd_spread,"
-            "thread_pool=1"
+            "thread_pool=1,usebackuproot,user_subvol_rm_allowed"
         )
 
         # hacky as depends on above success in creating this pool.
