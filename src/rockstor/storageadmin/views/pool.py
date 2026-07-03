@@ -165,23 +165,26 @@ class PoolMixin(object):
         if mnt_options is None:
             return ""
         allowed_options = {
-            "alloc_start": int,
             "autodefrag": None,
             "clear_cache": None,
             "commit": int,
             "compress-force": settings.COMPRESSION_TYPES,
             "degraded": None,
             "discard": None,
+            "enospc_debug": None,
             "fatal_errors": None,
-            "inode_cache": None,
+            "flushoncommit": None,
             "max_inline": int,
             "metadata_ratio": int,
             "noacl": None,
             "noatime": None,
+            "nobarrier": None,
             "nodatacow": None,
             "nodatasum": None,
+            "nologreplay": None,
             "nospace_cache": None,
             "nossd": None,
+            "notreelog": None,
             "ro": None,
             "rw": None,
             "skip_balance": None,
@@ -189,6 +192,8 @@ class PoolMixin(object):
             "ssd": None,
             "ssd_spread": None,
             "thread_pool": int,
+            "usebackuproot": None,
+            "user_subvol_rm_allowed": None,
             "": None,
         }
         o_fields = mnt_options.split(",")
