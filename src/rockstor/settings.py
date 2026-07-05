@@ -474,6 +474,13 @@ HUEY = SqliteHuey(filename="{}/rockstor-tasks-huey.db".format(BASE_DIR))
 
 TASK_SCHEDULER = {"max_log": 100}  # max number of task log entries to keep
 
+# Use above Huey task queue backend for running Django.tasks also.
+TASKS = {
+    'default': {
+        'BACKEND': 'huey.contrib.djhuey.tasks_backend.HueyBackend',
+    },
+}
+
 # Establish our OS base id, name, and version:
 # Use id for code path decisions. Others are for Web-UI display purposes.
 # Examples given are for CentOS Rockstor variant, Leap 15, and Tumblweed.
