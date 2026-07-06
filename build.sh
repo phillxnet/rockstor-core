@@ -78,6 +78,7 @@ poetry python install -vvv --no-interaction --no-ansi ${STANDALONE_PYTHON_VERSIO
 # ** --no-ansi avoids special characters **
 env > poetry-install.txt
 poetry --version >> poetry-install.txt
+poetry env info >> poetry-install.txt
 poetry self show plugins >> poetry-install.txt
 # /usr/local/bin/poetry -> /opt/pipx/venvs/poetry
 poetry install -vvv --no-interaction --no-ansi >> poetry-install.txt 2>&1
