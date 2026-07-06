@@ -49,6 +49,7 @@ PKG-INFO
 certs/
 jslibs/
 poetry-install.txt
+poetry-python.txt
 rockstor-jslibs.tar.gz*
 rockstor-tasks-huey.db*
 /static/
