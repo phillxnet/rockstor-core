@@ -204,7 +204,7 @@ class Sender(ReplicationMixin, Process):
                     self.msg = f"{self.msg}. successful trail found for {self.rlatest_snap}".encode(
                         "utf-8"
                     )
-                    snap_path = f"{settings.MNT_PT}{self.replica.pool}.snapshots/{self.replica.share}/{self.rlatest_snap}"
+                    snap_path = f"{settings.MNT_PT}{self.replica.pool}/.snapshots/{self.replica.share}/{self.rlatest_snap}"
                     if is_subvol(snap_path):
                         self.msg = f"Snapshot({snap_path}) exists in the system and will be used as the parent".encode(
                             "utf-8"
