@@ -202,6 +202,7 @@ INSTALLED_APPS = (
     "smart_manager",
     "oauth2_provider",
     "huey.contrib.djhuey",
+    "huey.contrib.djhuey.stats",
 )
 
 # https://docs.djangoproject.com/en/4.2/ref/settings/#std-setting-STORAGES
