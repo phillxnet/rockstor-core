@@ -130,7 +130,7 @@ class TaskSchedulerMixin(object):
                     if td.crontabwindow is not None:
                         # add crontabwindow as 2nd arg to task script, new line
                         # moved here
-                        tab = "{} \{}\n".format(tab, td.crontabwindow)
+                        tab = fr"{tab} \{td.crontabwindow}" + "\n"
                     else:
                         logger.error("missing crontab window value")
                         continue
