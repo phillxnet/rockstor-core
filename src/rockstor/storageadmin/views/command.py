@@ -165,7 +165,9 @@ class CommandView(DiskMixin, NFSExportMixin, APIView):
                     )
                     continue
                 # Import / update db shares counterpart for managed pool.
+                # Includes owner:group & permissions DB update from Pool subvol path.
                 import_shares(p, request)
+                p.save()
 
             for share in Share.objects.all():
                 if share.pool.disk_set.attached().count() == 0:
@@ -180,8 +182,9 @@ class CommandView(DiskMixin, NFSExportMixin, APIView):
                 try:
                     if not share.is_mounted:
                         # System mounted shares i.e. home will already be mounted.
-                        mnt_pt = "{}{}".format(settings.MNT_PT, share.name)
+                        mnt_pt = f"{settings.MNT_PT}{share.name}"
                         mount_share(share, mnt_pt)
+                        share.save()
                 except Exception as e:
                     e_msg = (
                         "Exception while mounting a share ({}) during "

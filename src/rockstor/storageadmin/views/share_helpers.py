@@ -168,7 +168,8 @@ def import_shares(pool, request):
 
             # OWNER, GROUP, AND PERMISSIONS UPDATE.
             # Update the existing DB Share entry from the on disk subvol info.
-            share_stat: stat_result = stat(share.mnt_pt)
+            subvol_path = f"{pool.mnt_pt}/{s_in_pool}".replace("//", "/")
+            share_stat: stat_result = stat(subvol_path)
             subvol_owner = user_name(share_stat.st_uid)
             subvol_group = group_name(share_stat.st_gid)
             subvol_perms = oct(S_IMODE(share_stat.st_mode))[2:].zfill(3)
@@ -179,7 +180,7 @@ def import_shares(pool, request):
             if share.perms != subvol_perms:
                 share.perms = subvol_perms
             # COMPRESSION SETTING FROM DISK
-            subvol_compression = get_property(share.mnt_pt, "compression")
+            subvol_compression = get_property(subvol_path, "compression")
             if share.compression_algo != subvol_compression:
                 share.compression_algo = subvol_compression
             share.save()
