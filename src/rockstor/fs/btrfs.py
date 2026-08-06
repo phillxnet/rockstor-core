@@ -587,7 +587,7 @@ def get_pool_info(disk):
         elif re.match("\tTotal devices", l) is not None:
             fields = l.split()
             full_dev_count = int(fields[2])
-        elif re.match("\t\*\*\* Some devices missing", l) is not None:
+        elif re.match(r"\t\*\*\* Some devices missing", l) is not None:
             pool_info["hasMissingDev"] = True
     pool_info["fullDevCount"] = full_dev_count
     pool_info["missingDevCount"] = full_dev_count - attached_dev_count
@@ -811,7 +811,7 @@ def umount_root(root_pool_mnt):
         if ce.rc == 32:
             for l in ce.err:
                 l = l.strip()
-                if re.search("not mounted\.$", l) is not None:
+                if re.search(r"not mounted\.$", l) is not None:
                     return
             raise ce
     for i in range(20):
@@ -1775,7 +1775,7 @@ def pool_usage(mnt_pt):
 
     used = 0
     for line in out:
-        fields = re.split("\W+", line)
+        fields = re.split(r"\W+", line)
         if line.startswith("Data"):
             used += int(fields[5])
         elif re.search("Size", line):
