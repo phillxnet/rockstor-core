@@ -29,7 +29,7 @@ from fs.btrfs import (
     add_snap,
     share_id,
     volume_usage,
-    remove_snap,
+    remove_snap_subvol,
     umount_root,
     mount_snap,
     qgroup_assign,
@@ -265,7 +265,7 @@ class SnapshotView(NFSExportMixin, rfc.GenericView):
             )
             toggle_sftp_visibility(share, snapshot.real_name, snapshot.qgroup, on=False)
 
-        remove_snap(share.pool, share.name, snapshot.name, snapshot.qgroup)
+        remove_snap_subvol(snapshot)
         snapshot.delete()
         return Response()
 

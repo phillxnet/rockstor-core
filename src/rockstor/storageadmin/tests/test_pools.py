@@ -44,9 +44,7 @@ bin/django dumpdata storageadmin.pool storageadmin.disk storageadmin.share \
 src/rockstor/storageadmin/fixtures/test_pools.json
 
 cd /opt/rockstor/src/rockstor
-export DJANGO_SETTINGS_MODULE=settings
 poetry run django-admin test -p test_pools.py -v 2
-./bin/test -v 2 -p test_pools.py
 """
 
 
@@ -320,7 +318,6 @@ class PoolTests(APITestMixin):
     def test_invalid_root_pool_edits(self):
         """
         - add disk to root pool
-        - delete root pool
         """
 
         # add disk to root pool
@@ -342,18 +339,6 @@ class PoolTests(APITestMixin):
         )
         self.assertEqual(response.data[0], e_msg)
 
-        # delete root pool
-        e_msg = (
-            "Deletion of pool ({}) is not allowed as it "
-            "contains the operating system."
-        ).format(pool.name)
-        response = self.client.delete("{}/{}".format(self.BASE_URL, pId))
-        self.assertEqual(
-            response.status_code,
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-            msg=response.data,
-        )
-        self.assertEqual(response.data[0], e_msg)
 
     def test_name_regex(self):
         """

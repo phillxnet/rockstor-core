@@ -14,6 +14,7 @@ General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
+
 import re
 from rest_framework.response import Response
 from rest_framework import status
@@ -30,7 +31,7 @@ from fs.btrfs import (
     mount_root,
     start_balance,
     usage_bound,
-    remove_share,
+    remove_share_subvol,
     enable_quota,
     disable_quota,
     rescan_quotas,
@@ -38,6 +39,7 @@ from fs.btrfs import (
     balance_status_all,
     PROFILE,
 )
+from system.docker import docker_status
 from system.osi import remount, trigger_udev_update
 from storageadmin.util import handle_exception
 from django.conf import settings
@@ -766,16 +768,8 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
             try:
                 pool = Pool.objects.get(id=pid)
             except:
-                e_msg = "Pool with id ({}) does not exist.".format(pid)
+                e_msg = f"Pool with id ({pid}) does not exist."
                 handle_exception(Exception(e_msg), request)
-
-            if pool.role == "root":
-                e_msg = (
-                    "Deletion of pool ({}) is not allowed as it contains "
-                    "the operating system."
-                ).format(pool.name)
-                handle_exception(Exception(e_msg), request)
-
             if not pool.is_mounted:
                 logger.info(
                     "Pool ({}) to be deleted is not mounted. "
@@ -794,10 +788,41 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                         "are deleted."
                     ).format(pool.name)
                     handle_exception(Exception(e_msg), request)
+                if docker_status():
+                    # We cannot know for sure if a Rock-on uses a Pool, but if it has
+                    # subvols (Shares) it is possible. Ergo block Poool delete & advise.
+                    # Can be refined by reporting Pool hosted Rock-on (DVolume) Shares.
+                    e_msg = (
+                        f"Pool ({pool.name}) cannot have management deleted while the "
+                        "Rock-on service is ON: Shares on this Pool may be in use.\n"
+                        "Turn the Rock-on service OFF to facilitate Pool delete.\n"
+                        "Note: Some Rock-ons may take around a minute to fully stop."
+                    )
+                    handle_exception(Exception(e_msg), request)
+                logger.info("Proceeding with unmount and database (DB) removal of:")
+                logger.info(f"- Pool ({pool.name}) mount point {pool.mnt_pt}.")
                 for so in Share.objects.filter(pool=pool):
-                    remove_share(so.pool, so.subvol_name, so.pqgroup, force=force)
-            pool_path = "{}{}".format(settings.MNT_PT, pool.name)
-            umount_root(pool_path)
+                    # Unlike Samba & SFTP exports; NFS exports don't get auto-deleted
+                    # on pool.delete - via Share.ForeignKey to host Pool.
+                    # They just lose their Share reference - so itteratively remove all
+                    # linked export_groups before removing all related export_sets.
+                    if so.nfsexport_set.exists():
+                        logger.info(f"- Deleting NFS DB configs for Share ({so.name}).")
+                        for export_set in so.nfsexport_set.all():
+                            logger.info(
+                                f"- Deleting config for host {export_set.export_group.host_str}"
+                            )
+                            export_set.export_group.delete()
+                        so.nfsexport_set.all().delete()
+                    logger.info(
+                        f"-- Unmounting subvol ({so.name}) mount point {so.mnt_pt}."
+                    )
+                    umount_root(so.mnt_pt)
+            logger.info(f"- Unmounting Pool ({pool.name}) mount point {pool.mnt_pt}.")
+            umount_root(pool.mnt_pt)
+            logger.info(
+                f"Removing Pool ({pool.name}) management and associated configuration."
+            )
             pool.delete()
             # We may need to update disk state here.
             return Response()

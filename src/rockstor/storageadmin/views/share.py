@@ -34,7 +34,7 @@ from storageadmin.models import (
 from smart_manager.models import Replica
 from fs.btrfs import (
     add_share,
-    remove_share,
+    remove_share_subvol,
     update_quota,
     volume_usage,
     set_property,
@@ -333,7 +333,7 @@ class ShareDetailView(ShareMixin, rfc.GenericView):
     @transaction.atomic
     def delete(self, request, sid, command=""):
         """
-        For now, we delete all snapshots, if any of the share and delete the
+        For now, we delete all snapshots, if any, of the share; and then delete the
         share itself.
         """
         force = True if (command == "force") else False
@@ -388,7 +388,7 @@ class ShareDetailView(ShareMixin, rfc.GenericView):
             self._rockon_check(request, share.name, force=force)
 
             try:
-                remove_share(share.pool, share.subvol_name, share.pqgroup, force=force)
+                remove_share_subvol(share, force=force)
             except Exception as e:
                 logger.exception(e)
                 e_msg = f"Failed to delete the share ({share.name}). Error from the OS: {e.__str__()}"
