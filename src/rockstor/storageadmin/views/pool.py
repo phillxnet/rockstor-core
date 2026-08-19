@@ -83,7 +83,7 @@ class PoolMixin(object):
         try:
             return Disk.objects.get(name=d)
         except:
-            e_msg = "Disk with name ({}) does not exist.".format(d)
+            e_msg = f"Disk with name ({d}) does not exist."
             handle_exception(Exception(e_msg), request)
 
     @staticmethod
@@ -92,7 +92,7 @@ class PoolMixin(object):
         try:
             return Disk.objects.get(id=diskId)
         except:
-            e_msg = "Disk with id ({}) does not exist.".format(diskId)
+            e_msg = f"Disk with id ({diskId}) does not exist."
             handle_exception(Exception(e_msg), request)
 
     @staticmethod
@@ -134,7 +134,7 @@ class PoolMixin(object):
     def _validate_new_quota_state(request):
         logger.debug(
             "#### validate_new_quota_state received new_state "
-            "=({}).".format(request.data.get("quotas"))
+            f"=({request.data.get('quotas')})."
         )
         new_val = request.data.get("quotas", "Enabled")
         if new_val is None:
@@ -142,8 +142,8 @@ class PoolMixin(object):
             new_val = "Enabled"
         if new_val != "Enabled" and new_val != "Disabled":
             e_msg = (
-                "Unsupported quotas request ({}). "
-                'Expecting "Enabled" or "Disabled"'.format(new_val)
+                f"Unsupported quotas request ({new_val}). "
+                'Expecting "Enabled" or "Disabled"'
             )
             handle_exception(Exception(e_msg), request)
         return new_val
@@ -155,8 +155,9 @@ class PoolMixin(object):
         if compression is None or compression == "":
             compression = "no"
         if compression not in settings.COMPRESSION_TYPES:
-            e_msg = ("Unsupported compression algorithm ({}). Use one of {}.").format(
-                compression, settings.COMPRESSION_TYPES
+            e_msg = (
+                f"Unsupported compression algorithm ({compression}). "
+                f"Use one of {settings.COMPRESSION_TYPES}."
             )
             handle_exception(Exception(e_msg), request)
         return compression
@@ -205,14 +206,13 @@ class PoolMixin(object):
                 o, v = o.split("=")
             if o not in allowed_options:
                 e_msg = (
-                    "mount option ({}) not allowed. Make sure there are "
-                    "no whitespaces in the input. Allowed options: "
-                    "({})."
-                ).format(o, sorted(allowed_options.keys()))
+                    f"mount option ({o}) not allowed. Make sure there are "
+                    f"no whitespaces in the input. Allowed options: ({sorted(allowed_options.keys())})."
+                )
                 handle_exception(Exception(e_msg), request)
             if o == "compress-force" and v not in allowed_options["compress-force"]:
-                e_msg = ("compress-force is only allowed with {}.").format(
-                    settings.COMPRESSION_TYPES
+                e_msg = (
+                    f"compress-force is only allowed with {settings.COMPRESSION_TYPES}."
                 )
                 handle_exception(Exception(e_msg), request)
             # changed conditional from "if (type(allowed_options[o]) is int):"
@@ -220,9 +220,7 @@ class PoolMixin(object):
                 try:
                     int(v)
                 except:
-                    e_msg = ("Value for mount option ({}) must be an integer.").format(
-                        o
-                    )
+                    e_msg = f"Value for mount option ({o}) must be an integer."
                     handle_exception(Exception(e_msg), request)
         return mnt_options
 
@@ -239,19 +237,17 @@ class PoolMixin(object):
             pool.save()
 
         if re.search("noatime", mnt_options) is None:
-            mnt_options = "{},relatime,atime".format(mnt_options)
+            mnt_options = f"{mnt_options},relatime,atime"
 
         if re.search("compress-force", mnt_options) is None:
-            mnt_options = "{},compress={}".format(mnt_options, compression)
+            mnt_options = f"{mnt_options},compress={compression}"
 
         with open("/proc/mounts") as mfo:
             mount_map = {}
             for l in mfo.readlines():
                 share_name = None
                 if (
-                    re.search(
-                        "{}|{}".format(settings.NFS_EXPORT_ROOT, settings.MNT_PT), l
-                    )
+                    re.search(f"{settings.NFS_EXPORT_ROOT}|{settings.MNT_PT}", l)
                     is not None
                 ):
                     share_name = l.split()[1].split("/")[2]
@@ -265,7 +261,7 @@ class PoolMixin(object):
                     mount_map[share_name].append(l.split()[1])
         failed_remounts = []
         try:
-            pool_mnt = "/mnt2/{}".format(pool.name)
+            pool_mnt = f"/mnt2/{pool.name}"
             remount(pool_mnt, mnt_options)
         except:
             failed_remounts.append(pool_mnt)
@@ -279,12 +275,12 @@ class PoolMixin(object):
                         failed_remounts.append(m)
         if len(failed_remounts) > 0:
             e_msg = (
-                "Failed to remount the following mounts.\n {}.\n "
+                f"Failed to remount the following mounts.\n {failed_remounts}.\n "
                 "Try again or do the following as root (may cause "
                 "downtime):\n1. systemctl stop rockstor.\n"
                 "2. unmount manually.\n"
                 "3. systemctl start rockstor.\n"
-            ).format(failed_remounts)
+            )
             handle_exception(Exception(e_msg), request)
         return Response(PoolInfoSerializer(pool).data)
 
@@ -317,8 +313,8 @@ class PoolMixin(object):
         except:
             e_msg = (
                 "Failed to Enable (and rescan) / Disable Quotas for "
-                "Pool ({}). Requested quota state "
-                "was ({}).".format(pool.name, new_quota_state)
+                f"Pool ({pool.name}). Requested quota state "
+                f"was ({new_quota_state})."
             )
             handle_exception(Exception(e_msg), request)
         return Response(PoolInfoSerializer(pool).data)
@@ -334,7 +330,7 @@ class PoolMixin(object):
         cmd = balance_pool_cmd(mnt_pt, force=force, convert=convert)
         task_result_handle = start_balance(cmd)
         tid = task_result_handle.id
-        logger.debug("balance tid = ({}).".format(tid))
+        logger.debug(f"balance tid = ({tid}).")
         return tid
 
     def _resize_pool_start(self, pool, dnames, add=True):
@@ -354,8 +350,8 @@ class PoolMixin(object):
         if cmd is None:
             return tid
         logger.info(
-            "Beginning device resize on pool ({}). "
-            "Changed member devices:({}).".format(pool.name, dnames)
+            f"Beginning device resize on pool ({pool.name}). "
+            f"Changed member devices:({dnames})."
         )
         if add:
             # Mostly instantaneous so avoid complexity/overhead of huey
@@ -364,7 +360,7 @@ class PoolMixin(object):
         # Device delete initiates long running internal balance: start async.
         task_result_handle = start_resize_pool(cmd)
         tid = task_result_handle.id
-        logger.debug("Pool resize tid = ({}).".format(tid))
+        logger.debug(f"Pool resize tid = ({tid}).")
         return tid
 
 
@@ -394,7 +390,7 @@ class PoolListView(PoolMixin, rfc.GenericView):
             #  N.B. we have an existing test for this 'NoneType' response !!
             disks = [self._validate_disk(d, request) for d in request.data.get("disks")]
             pname = request.data["pname"]
-            if re.match("{}$".format(settings.POOL_REGEX), pname) is None:
+            if re.match(f"{settings.POOL_REGEX}$", pname) is None:
                 e_msg = (
                     "Invalid characters in pool name. Following "
                     "characters are allowed: letter(a-z or A-Z), "
@@ -408,47 +404,39 @@ class PoolListView(PoolMixin, rfc.GenericView):
                 handle_exception(Exception(e_msg), request)
 
             if Pool.objects.filter(name=pname).exists():
-                e_msg = ("Pool ({}) already exists. Choose a different name.").format(
-                    pname
-                )
+                e_msg = f"Pool ({pname}) already exists. Choose a different name."
                 handle_exception(Exception(e_msg), request)
 
             # TODO: Add check against un-imported pool names.
-            # e_msg = "Unimported Pool ({}) already exists. Choose a different name.".format(
-            #     pname
-            # )
+            # e_msg = f"Unimported Pool ({pname}) already exists. Choose a different name."
 
             if Share.objects.filter(name=pname).exists():
                 e_msg = (
-                    "A share with this name ({}) exists. Pool and share "
+                    f"A share with this name ({pname}) exists. Pool and share "
                     "names must be distinct. "
                     "Choose a different name."
-                ).format(pname)
+                )
                 handle_exception(Exception(e_msg), request)
 
             for d in disks:
                 if d.btrfs_uuid is not None:
                     e_msg = (
                         "Another BTRFS filesystem exists on this "
-                        "disk ({}). "
+                        f"disk ({d.name}). "
                         "Erase the disk and try again."
-                    ).format(d.name)
+                    )
                     handle_exception(Exception(e_msg), request)
 
             raid_level = request.data["raid_level"]
             # Reject creation of unsupported raid_level:
             if raid_level not in SUPPORTED_PROFILES:
-                e_msg = "Unsupported raid level. Use one of: {}.".format(
-                    SUPPORTED_PROFILES
-                )
+                e_msg = f"Unsupported raid level. Use one of: {SUPPORTED_PROFILES}."
                 handle_exception(Exception(e_msg), request)
 
             # Reject below minium device count for selected profile
             profile_min_dev_count = PROFILE[raid_level].min_dev_count
             if len(disks) < profile_min_dev_count:
-                e_msg = (
-                    "{} or more disks are required for the raid level: {}."
-                ).format(profile_min_dev_count, raid_level)
+                e_msg = f"{profile_min_dev_count} or more disks are required for the raid level: {raid_level}."
                 handle_exception(Exception(e_msg), request)
 
             compression = self._validate_compression(request)
@@ -499,24 +487,23 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
         'remount' - remount the pool, to apply changed mount options
         'quotas' - request pool quota setting change
         """
-        logger.debug("######## PUT request on pool id ({}) ###############".format(pid))
-        logger.debug("######## request = ({})".format(request.data))
-        logger.debug("######## request disks = ({})".format(request.data.get("disks")))
-        logger.debug("######## command = ({})".format(command))
+        logger.debug(f"######## PUT request on pool id ({pid}) ###############")
+        logger.debug(f"######## request = ({request.data})")
+        logger.debug(f"######## request disks = ({request.data.get('disks')})")
+        logger.debug(f"######## command = ({command})")
         with self._handle_exception(request):
             try:
                 pool = Pool.objects.get(id=pid)
             except:
-                e_msg = "Pool with id ({}) does not exist.".format(pid)
+                e_msg = f"Pool with id ({pid}) does not exist."
                 handle_exception(Exception(e_msg), request)
 
-            logger.debug("######## pool name ({}) ###############".format(pool.name))
+            logger.debug(f"######## pool name ({pool.name}) ###############")
             if pool.role == "root" and command != "quotas":
                 e_msg = (
-                    "Edit operations are not allowed on this pool ({}) "
-                    "as it contains the operating "
-                    "system."
-                ).format(pool.name)
+                    f"Edit operations are not allowed on this pool ({pool.name}) "
+                    "as it contains the operating system."
+                )
                 handle_exception(Exception(e_msg), request)
 
             if command == "remount":
@@ -576,34 +563,31 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                 for d in disks:
                     if d.pool is not None:
                         e_msg = (
-                            "Disk ({}) cannot be added to this pool ({}) "
-                            "because it belongs to another pool ({})"
-                            "."
-                        ).format(d.name, pool.name, d.pool.name)
+                            f"Disk ({d.name}) cannot be added to this pool ({pool.name}) "
+                            f"because it belongs to another pool ({d.pool.name})."
+                        )
                         handle_exception(Exception(e_msg), request)
                     if d.btrfs_uuid is not None:
                         e_msg = (
-                            "Disk ({}) has a BTRFS filesystem from the "
+                            f"Disk ({d.name}) has a BTRFS filesystem from the "
                             "past. If you really like to add it, wipe it "
                             "from the Storage -> Disks screen of the "
                             "web-ui."
-                        ).format(d.name)
+                        )
                         handle_exception(Exception(e_msg), request)
 
                 # Avoid extreme raid level change upwards (space issues).
                 # TODO: Consider removing once we have better space calc.
                 if pool.raid == "single" and new_raid == "raid10":
-                    e_msg = ("Pool migration from {} to {} is not supported.").format(
-                        pool.raid, new_raid
-                    )
+                    e_msg = f"Pool migration from {pool.raid} to {new_raid} is not supported."
                     handle_exception(Exception(e_msg), request)
 
                 # Avoid add if to-be attached < minium device count for proposed profile
                 profile_min_dev_count = PROFILE[new_raid].min_dev_count
                 if num_total_attached_disks < profile_min_dev_count:
                     e_msg = (
-                        "A minimum of {} drives are required for the "
-                        "raid level: {}.".format(profile_min_dev_count, new_raid)
+                        f"A minimum of {profile_min_dev_count} drives are required for the "
+                        f"raid level: {new_raid}."
                     )
                     handle_exception(Exception(e_msg), request)
 
@@ -623,14 +607,14 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                 ):  # noqa E501
                     e_msg = (
                         "A Balance process is already running or paused "
-                        "for this pool ({}). Resize is not supported "
+                        f"for this pool ({pool.name}). Resize is not supported "
                         "during a balance process."
-                    ).format(pool.name)
+                    )
                     temp_poolBalances = PoolBalance.objects.filter(pool=pool)
                     for record in temp_poolBalances:
                         logger.debug(
-                            "====== Recorded status = ({})."
-                            "000000 full info = {}".format(record.status, record)
+                            f"====== Recorded status = ({record.status})."
+                            f"000000 full info = {record}"
                         )
                     handle_exception(Exception(e_msg), request)
 
@@ -661,10 +645,10 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                 for d in disks:  # to be removed
                     if d.pool is None or d.pool != pool:
                         e_msg = (
-                            "Disk ({}) cannot be removed because it does "
+                            f"Disk ({d.name}) cannot be removed because it does "
                             "not belong to this "
-                            "pool ({})."
-                        ).format(d.name, pool.name)
+                            f"pool ({pool.name})."
+                        )
                         handle_exception(Exception(e_msg), request)
                     if re.match("detached-", d.name) is not None:
                         detached_disks_selected += 1
@@ -700,10 +684,8 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                     if remaining_attached_disks < profile_min_dev_count:
                         e_msg = (
                             "Disks cannot be removed from this pool "
-                            "because its raid configuration ({}) "
-                            "requires a minimum of {} disk/s.".format(
-                                pool.raid, profile_min_dev_count
-                            )
+                            f"because its raid configuration ({pool.raid}) "
+                            f"requires a minimum of {profile_min_dev_count} disk/s."
                         )
                         handle_exception(Exception(e_msg), request)
 
@@ -711,22 +693,19 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                     for d in disks:  # to be removed
                         size_cut += d.allocated
                         logger.debug(
-                            "++++++++ adding disk {} allocated space {} to size_cut".format(
-                                d.name, d.allocated
-                            )
+                            f"++++++++ adding disk {d.name} allocated space {d.allocated} to size_cut"
                         )
                     available_free = pool.free
-                    logger.debug("available_free = {}".format(available_free))
-                    logger.debug("pool size = {}".format(pool.size))
+                    logger.debug(f"available_free = {available_free}")
+                    logger.debug(f"pool size = {pool.size}")
                     # TODO improve disk list presentation in the following msg.
                     #  currently we have: "Removing disks ([u'virtio-1']) may shrink"
                     if size_cut >= available_free:
                         e_msg = (
-                            "Removing disk/s ({}) may shrink the pool by "
-                            "{} KB, which is greater than available free "
-                            "space {} KB. This is "
-                            "not supported."
-                        ).format(" ".join(dnames), size_cut, available_free)
+                            f"Removing disk/s ({" ".join(dnames)}) may shrink the pool by "
+                            f"{size_cut} KB, which is greater than available free "
+                            f"space {available_free} KB. This is not supported."
+                        )
                         handle_exception(Exception(e_msg), request)
 
                     # Unlike resize_pool_start() with add=True a remove has an
@@ -755,7 +734,7 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                         d.save()
 
             else:
-                e_msg = "Command ({}) is not supported.".format(command)
+                e_msg = f"Command ({command}) is not supported."
                 handle_exception(Exception(e_msg), request)
             pool.size = pool.usage_bound()
             pool.save()
@@ -772,31 +751,31 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                 handle_exception(Exception(e_msg), request)
             if not pool.is_mounted:
                 logger.info(
-                    "Pool ({}) to be deleted is not mounted. "
-                    "Proceeding with database removal only.".format(pool.name)
+                    f"Pool ({pool.name}) to be deleted is not mounted. "
+                    "Proceeding with database removal only."
                 )
             elif pool.redundancy_exceeded:
                 logger.info(
-                    "Pool ({}) to be deleted has exceeded its redundancy limits. "
-                    "Proceeding with database removal only.".format(pool.name)
+                    f"Pool ({pool.name}) to be deleted has exceeded its redundancy limits. "
+                    "Proceeding with database removal only."
                 )
             elif Share.objects.filter(pool=pool).exists():
                 if not force:
                     e_msg = (
-                        "Pool ({}) is not empty. Delete is not allowed "
+                        f"Pool ({pool.name}) is not empty. Delete is not allowed "
                         "until all shares in the pool "
                         "are deleted."
-                    ).format(pool.name)
+                    )
                     handle_exception(Exception(e_msg), request)
                 if docker_status():
                     # We cannot know for sure if a Rock-on uses a Pool, but if it has
-                    # subvols (Shares) it is possible. Ergo block Poool delete & advise.
+                    # subvols (Shares) it is possible. Ergo block Pool delete & advise.
                     # Can be refined by reporting Pool hosted Rock-on (DVolume) Shares.
                     e_msg = (
                         f"Pool ({pool.name}) cannot have management deleted while the "
                         "Rock-on service is ON: Shares on this Pool may be in use.\n"
-                        "Turn the Rock-on service OFF to facilitate Pool delete.\n"
-                        "Note: Some Rock-ons may take around a minute to fully stop."
+                        "Turn the Rock-on service OFF before deleting Pool management.\n"
+                        "Note: some Rock-ons may take around a minute to fully stop."
                     )
                     handle_exception(Exception(e_msg), request)
                 logger.info("Proceeding with unmount and database (DB) removal of:")
