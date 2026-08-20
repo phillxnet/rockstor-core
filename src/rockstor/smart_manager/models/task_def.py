@@ -19,18 +19,11 @@ import json
 
 from django.db import models
 from storageadmin.models import Pool, Share
+from smart_manager.constants import TASK_TYPES
 
 
 class TaskDefinition(models.Model):
     name = models.CharField(max_length=255, unique=True)
-    TASK_TYPES = [
-        ("scrub",) * 2,
-        ("snapshot",) * 2,
-        ("reboot",) * 2,
-        ("shutdown",) * 2,
-        ("suspend",) * 2,
-        ("custom",) * 2,
-    ]
     task_type = models.CharField(max_length=100, choices=TASK_TYPES)
     json_meta = models.CharField(max_length=8192)
     enabled = models.BooleanField(default=True)
