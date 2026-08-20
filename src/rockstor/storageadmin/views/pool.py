@@ -20,6 +20,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
 from django.db import transaction
+
+from smart_manager.models import TaskDefinition
 from storageadmin.serializers import PoolInfoSerializer
 from storageadmin.models import Disk, Pool, Share, PoolBalance
 from fs.btrfs import (
@@ -759,7 +761,18 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                     f"Pool ({pool.name}) to be deleted has exceeded its redundancy limits. "
                     "Proceeding with database removal only."
                 )
-            elif Share.objects.filter(pool=pool).exists():
+            # Delete DB config for scrub type tasks: no Share is required for these.
+            if TaskDefinition.objects.filter(task_type="scrub").exists():
+                for taskdef in TaskDefinition.objects.filter(task_type="scrub").all():
+                    if taskdef.pool_name == pool.name:
+                        logger.info(
+                            f"Deleting scheduled scrub task ({taskdef.name}) for ({pool.name})."
+                        )
+                        # The following, via ForeignKey on_delete=models.CASCADE,
+                        # also removes scheduled scrub history in linked Task entries.
+                        taskdef.delete()
+
+            if Share.objects.filter(pool=pool).exists():
                 if not force:
                     e_msg = (
                         f"Pool ({pool.name}) is not empty. Delete is not allowed "
