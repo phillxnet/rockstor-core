@@ -802,7 +802,8 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                 logger.info("Proceeding with unmount and database (DB) removal of:")
                 logger.info(f"- Pool ({pool.name}) mount point {pool.mnt_pt}.")
                 for so in Share.objects.filter(pool=pool):
-                    # Unlike Samba & SFTP exports; NFS exports don't get auto-deleted
+                    # NFS EXPORTS
+                    # unlike Samba & SFTP exports, don't get auto-deleted
                     # on pool.delete - via Share.ForeignKey to host Pool.
                     # They just lose their Share reference - so itteratively remove all
                     # linked export_groups before removing all related export_sets.
@@ -814,6 +815,21 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                             )
                             export_set.export_group.delete()
                         so.nfsexport_set.all().delete()
+                    # SNAPSHOT TASKS
+                    # Akin to NFS EXPORTS, we have no Share cascade delete for these
+                    # tasks. Find and remove all of this Share's snapshot tasks before
+                    # proceeding.
+                    if TaskDefinition.objects.filter(task_type="snapshot").exists():
+                        for taskdef in TaskDefinition.objects.filter(
+                            task_type="snapshot"
+                        ).all():
+                            if taskdef.share_name == so.name:
+                                logger.info(
+                                    f"- Deleting scheduled snapshot task ({taskdef.name}) for ({so.name})."
+                                )
+                                # The following, via ForeignKey on_delete=models.CASCADE,
+                                # also removes scheduled snap history in linked Task entries.
+                                taskdef.delete()
                     logger.info(
                         f"-- Unmounting subvol ({so.name}) mount point {so.mnt_pt}."
                     )
