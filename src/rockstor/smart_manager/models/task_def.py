@@ -19,7 +19,7 @@ import json
 
 from django.db import models
 from storageadmin.models import Pool, Share
-from smart_manager.constants import TASK_TYPES
+from smart_manager.constants import TASK_TYPES, TASK_SCRIPTS
 
 
 class TaskDefinition(models.Model):
@@ -56,3 +56,19 @@ class TaskDefinition(models.Model):
             except Exception:
                 pn = "N/A"
         return pn
+
+    @property
+    def script(self, *args, **kwargs):
+        """
+        Returns the script to be executed for this task based on task_type.
+        Sources smart_manager.constants.
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        script: str = ""
+        if self.task_type in TASK_TYPES["power"]:
+            script: str = TASK_SCRIPTS["power"]
+        elif self.task_type in TASK_SCRIPTS:
+            script: str = TASK_SCRIPTS[self.task_type]
+        return script
