@@ -446,6 +446,29 @@ def degraded_pools_found():
             in_pool = False
     return degraded_pool_count
 
+def get_pool_labels():
+    """
+    Wrapper around 'btrfs fi show --raw' to extract all Pool labels. Primarily intended
+    to avoid creating a new Pool when an unmanaged Pool already exists with the same
+    label. We use labels, rather than uuid, to uniquely identify managed Pools. In time
+    we must move to uuid as canonical for identifying Pools.
+    :return: List of all pool labels. E.g. ["rock-pool","none"]
+    """
+    cmd = [BTRFS, "fi", "show", "--raw"]
+    # "Label: 'rock-pool'  uuid: 1ccbebf3-4ef3-4b72-b2cc-7b264fd7693d"
+    # If label set to "" or unset both of the following have been observed:
+    # "Label: none  uuid: 1ccbebf3-4ef3-4b72-b2cc-7b264fd7693d"
+    # "Label: '1ccbebf3-4ef3-4b72-b2cc-7b264fd7693d'  uuid: 1ccbebf3-4ef3-4b72-b2cc-7b264fd7693d"
+    # Ergo we strip single quotes just in case, then grab whatever we find.
+    o, e, rc = run_command(cmd, log=True)
+    labels: list[str] = []
+    for line in o:
+            if line == "":
+                continue
+            fields = line.strip().split()
+            if fields[0] == "Label:":  # Pool header: get label text:
+                labels.append(fields[1].strip("'"))
+    return labels
 
 def set_pool_label(label, dev_temp_name, root_pool=False):
     """

@@ -33,13 +33,13 @@ from fs.btrfs import (
     mount_root,
     start_balance,
     usage_bound,
-    remove_share_subvol,
     enable_quota,
     disable_quota,
     rescan_quotas,
     start_resize_pool,
     balance_status_all,
     PROFILE,
+    get_pool_labels,
 )
 from system.docker import docker_status
 from system.osi import remount, trigger_udev_update
@@ -406,11 +406,19 @@ class PoolListView(PoolMixin, rfc.GenericView):
                 handle_exception(Exception(e_msg), request)
 
             if Pool.objects.filter(name=pname).exists():
-                e_msg = f"Pool ({pname}) already exists. Choose a different name."
+                e_msg = (
+                    f"A managed Pool with the name/label ({pname}) already exists. "
+                    f"Choose a different name."
+                )
                 handle_exception(Exception(e_msg), request)
 
-            # TODO: Add check against un-imported pool names.
-            # e_msg = f"Unimported Pool ({pname}) already exists. Choose a different name."
+            if pname in get_pool_labels():
+                e_msg = (
+                    f"An unmanaged Pool with the name/label ({pname}) exists. "
+                    f"Either importing that Pool via a disk member, "
+                    f"or choose a different name."
+                )
+                handle_exception(Exception(e_msg), request)
 
             if Share.objects.filter(name=pname).exists():
                 e_msg = (
