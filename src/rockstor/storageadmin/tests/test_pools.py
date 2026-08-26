@@ -14,11 +14,13 @@ General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
+
 from django.conf import settings
 from rest_framework import status
 from unittest.mock import patch
 
 import fs.btrfs
+import smart_manager
 from storageadmin.models import Disk, Pool, PoolBalance
 from storageadmin.tests.test_api import APITestMixin
 from storageadmin.views.pool import SUPPORTED_PROFILES
@@ -50,6 +52,9 @@ poetry run django-admin test -p test_pools.py -v 2
 
 class PoolTests(APITestMixin):
     fixtures = ["test_api.json", "test_pools.json"]
+    # Required as from Pool management delete introduction (5.5.6-0) which
+    # assesses TaskDefinition links to Pools during Pool API delete calls.
+    databases = "__all__"
     BASE_URL = "/api/pools"
     default_balance_status = {"status": "finished", "percent_done": 100}
 
@@ -163,12 +168,13 @@ class PoolTests(APITestMixin):
         )
         self.assertEqual(response.data[0], e_msg)
 
-        # Create a pool with same name as an existing pool
+        # Create a pool with same name as an existing managed pool
 
         existing_pool_name = "existing-pool"  # in fixture.
         data["pname"] = existing_pool_name
-        e_msg = "Pool ({}) already exists. Choose a different name.".format(
-            existing_pool_name
+        e_msg = (
+            f"A managed Pool with the name/label ({existing_pool_name}) already exists. "
+            "Choose a different name."
         )
         response = self.client.post(self.BASE_URL, data=data)
         self.assertEqual(
@@ -338,7 +344,6 @@ class PoolTests(APITestMixin):
             msg=response.data,
         )
         self.assertEqual(response.data[0], e_msg)
-
 
     def test_name_regex(self):
         """
@@ -741,11 +746,7 @@ class PoolTests(APITestMixin):
         pId = temp_pool.id
 
         # remove 1 of 1 disks from single pool - reducing below minimum dev count of 1
-        data = {
-            "disks": (
-                "{}".format(virtio_2_id),
-            )
-        }
+        data = {"disks": ("{}".format(virtio_2_id),)}
         response3 = self.client.put(
             "{}/{}/remove".format(self.BASE_URL, pId), data=data
         )
