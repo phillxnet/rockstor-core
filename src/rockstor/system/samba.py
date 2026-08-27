@@ -52,6 +52,7 @@ def rockstor_smb_config(fo, exports):
     fo.write("{}\n".format(RS_SHARES_HEADER))
     for e in exports:
         admin_users = ""
+        # The following method leaves a trailing " " on admin_users.
         for au in e.admin_users.all():
             admin_users = "{}{} ".format(admin_users, au.username)
         fo.write("[{}]\n".format(e.share.name))
@@ -64,7 +65,7 @@ def rockstor_smb_config(fo, exports):
         fo.write("    read only = {}\n".format(e.read_only))
         fo.write("    guest ok = {}\n".format(e.guest_ok))
         if len(admin_users) > 0:
-            fo.write("    admin users = {}\n".format(admin_users))
+            fo.write(f"    admin users = {admin_users.strip()}\n")
         if e.shadow_copy:
             fo.write(
                 "    shadow:format = ." + e.snapshot_prefix + "_%Y%m%d%H%M\n"
