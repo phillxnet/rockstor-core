@@ -22,29 +22,21 @@ from tempfile import mkstemp
 
 from django.conf import settings
 
+from system.constants import (
+    RS_SHARES_HEADER,
+    RS_SHARES_FOOTER,
+    SMB_CONFIG,
+    RS_CUSTOM_HEADER,
+    RS_CUSTOM_FOOTER,
+    RS_AD_HEADER,
+    RS_AD_FOOTER,
+    SYSTEMCTL,
+    TM_CONFIG,
+)
 from system.osi import run_command
+from system.samba_util import test_parm
 from system.services import service_status, define_avahi_service
 from storageadmin.models import SambaCustomConfig
-
-TESTPARM = "/usr/bin/testparm"
-SMB_CONFIG = "/etc/samba/smb.conf"
-TM_CONFIG = "/etc/avahi/services/timemachine.service"
-SYSTEMCTL = "/usr/bin/systemctl"
-CHMOD = "/usr/bin/chmod"
-RS_SHARES_HEADER = "####BEGIN: Rockstor SAMBA CONFIG####"
-RS_SHARES_FOOTER = "####END: Rockstor SAMBA CONFIG####"
-RS_AD_HEADER = "####BEGIN: Rockstor ACTIVE DIRECTORY CONFIG####"
-RS_AD_FOOTER = "####END: Rockstor ACTIVE DIRECTORY CONFIG####"
-RS_CUSTOM_HEADER = "####BEGIN: Rockstor SAMBA GLOBAL CUSTOM####"
-RS_CUSTOM_FOOTER = "####END: Rockstor SAMBA GLOBAL CUSTOM####"
-
-
-def test_parm(config="/etc/samba/smb.conf"):
-    cmd = [TESTPARM, "-s", config]
-    o, e, rc = run_command(cmd, throw=False)
-    if rc != 0:
-        raise Exception("Syntax error while checking the temporary samba config file")
-    return True
 
 
 def rockstor_smb_config(fo, exports):
@@ -57,7 +49,9 @@ def rockstor_smb_config(fo, exports):
             admin_users = "{}{} ".format(admin_users, au.username)
         fo.write("[{}]\n".format(e.share.name))
         # Requires `poetry run` in ROOT_DIR to gain .env defined environment.
-        fo.write(f"    root preexec = sh -c \"cd {settings.ROOT_DIR} && {mnt_helper} {e.share.name}\"\n")
+        fo.write(
+            f'    root preexec = sh -c "cd {settings.ROOT_DIR} && {mnt_helper} {e.share.name}"\n'
+        )
         fo.write("    root preexec close = yes\n")
         fo.write("    comment = {}\n".format(e.comment.encode("utf-8")))
         fo.write("    path = {}\n".format(e.path))
@@ -94,6 +88,12 @@ def rockstor_smb_config(fo, exports):
 
 
 def refresh_smb_config(exports):
+    """
+    Wholesale re-write of all Share entries from the passed list.
+    Overwrites the existing entries pertaining to Share exports.
+    :param exports: List[SambaShare.objects]
+    :return:
+    """
     fh, npath = mkstemp()
     with open(SMB_CONFIG) as sfo, open(npath, "w") as tfo:
         rockstor_section = False

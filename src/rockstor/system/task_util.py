@@ -21,6 +21,16 @@ import stat
 from tempfile import mkstemp
 from smart_manager.constants import CRONTAB_FILE
 
+"""
+This file is to contain intentionally low-level facilities.
+Some may be directly involved in Django model definitions.
+It is therefor imperative/required that no related Django
+model be import as this creates a circular dependency:
+I.e.:
+- Model requires this file's contents to initialise.
+- This file requires related model to be initialised.
+"""
+
 
 def remove_crontab(script: str, task_def_id: int):
     """

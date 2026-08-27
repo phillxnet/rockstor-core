@@ -803,7 +803,7 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                 logger.info(f"- Pool ({pool.name}) mount point {pool.mnt_pt}.")
                 for so in Share.objects.filter(pool=pool):
                     # NFS EXPORTS
-                    # unlike Samba & SFTP exports, don't get auto-deleted
+                    # Unlike Samba & SFTP exports, NFS exports don't get auto-deleted
                     # on pool.delete - via Share.ForeignKey to host Pool.
                     # They just lose their Share reference - so itteratively remove all
                     # linked export_groups before removing all related export_sets.
