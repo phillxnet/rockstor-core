@@ -57,7 +57,7 @@ class SambaShare(models.Model):
         super_return = super().delete(**kwargs)
         # "post_delete" signal equivalent.
         try:
-            remove_smb_export(self.share.name)
+            remove_smb_export([self.share.name])
         except Exception:
             pass
         return super_return

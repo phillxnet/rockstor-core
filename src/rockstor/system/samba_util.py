@@ -44,19 +44,19 @@ def test_parm(config=SMB_CONFIG):
     return True
 
 
-def remove_smb_export(share_name: str) -> bool:
+def remove_smb_export(share_name_list: list[str]) -> bool:
     """
     Primarily required by SambaShare.delete() override post_delete action.
-    Simply removes a named Share entry within RS_SHARES_HEADER section of
+    Simply removes named Share entries within RS_SHARES_HEADER section of
     the SMB_CONFIG file. Intended as a low-level approach to bring existing
     SMB config in-line with a single SambaShare delete during, for example a
     larger (Pool delete) atomic transaction. So we cannot use existing
     whole-sale config re-writes as that would be unnecessary heavy weight.
     Also note that as we are intra-model we must be simple and predictable.
-    :param share_name: Sting from SambaShare.share.name
+    :param share_name_list: list of stings from SambaShare.share.name
     :return: True if file was modified, False otherwise.
     """
-    if not os.path.exists(SMB_CONFIG) or share_name is None:
+    if not os.path.exists(SMB_CONFIG) or share_name_list == []:
         return False
     fh, npath = mkstemp()
     with open(SMB_CONFIG, "r") as smb_conf, open(npath, "w") as temp_file:
@@ -69,8 +69,10 @@ def remove_smb_export(share_name: str) -> bool:
                 rockstor_section = True
             elif re.match(RS_SHARES_FOOTER, line) is not None:
                 rockstor_section = False
-            # Establish if we are in the specific share_entry:
-            if line.startswith(f"[{share_name}]"):
+            # Establish if we are in one of the specific share_entries:
+            if any(
+                line.startswith(f"[{share_name}]") for share_name in share_name_list
+            ):
                 share_entry = True
             elif line.startswith(r"["):
                 share_entry = False

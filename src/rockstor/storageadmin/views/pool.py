@@ -43,6 +43,7 @@ from fs.btrfs import (
 )
 from system.docker import docker_status
 from system.osi import remount, trigger_udev_update
+from system.samba_util import remove_smb_export
 from storageadmin.util import handle_exception
 from django.conf import settings
 import rest_framework_custom as rfc
@@ -769,6 +770,7 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                     f"Pool ({pool.name}) to be deleted has exceeded its redundancy limits. "
                     "Proceeding with database removal only."
                 )
+            # SCRUB TASKS
             # Delete DB config for scrub type tasks: no Share is required for these.
             if TaskDefinition.objects.filter(task_type="scrub").exists():
                 for taskdef in TaskDefinition.objects.filter(task_type="scrub").all():
@@ -777,9 +779,10 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                             f"Deleting scheduled scrub task ({taskdef.name}) for ({pool.name})."
                         )
                         # The following, via ForeignKey on_delete=models.CASCADE,
-                        # also removes scheduled scrub history in linked Task entries.
+                        # removes scheduled scrub history in linked Task model entries.
+                        # A TaskDefinition.delete() override updates our CRONTAB_FILE.
                         taskdef.delete()
-
+            share_name_list = []
             if Share.objects.filter(pool=pool).exists():
                 if not force:
                     e_msg = (
@@ -802,6 +805,7 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                 logger.info("Proceeding with unmount and database (DB) removal of:")
                 logger.info(f"- Pool ({pool.name}) mount point {pool.mnt_pt}.")
                 for so in Share.objects.filter(pool=pool):
+                    share_name_list.append(so.name)
                     # NFS EXPORTS
                     # Unlike Samba & SFTP exports, NFS exports don't get auto-deleted
                     # on pool.delete - via Share.ForeignKey to host Pool.
@@ -815,6 +819,7 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                             )
                             export_set.export_group.delete()
                         so.nfsexport_set.all().delete()
+                        # TODO: Remove relevant share entries from /etc/exports
                     # SNAPSHOT TASKS
                     # Akin to NFS EXPORTS, we have no Share cascade delete for these
                     # tasks. Find and remove all of this Share's snapshot tasks before
@@ -829,6 +834,7 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                                 )
                                 # The following, via ForeignKey on_delete=models.CASCADE,
                                 # also removes scheduled snap history in linked Task entries.
+                                # A TaskDefinition.delete() override updates our CRONTAB_FILE.
                                 taskdef.delete()
                     logger.info(
                         f"-- Unmounting subvol ({so.name}) mount point {so.mnt_pt}."
@@ -837,10 +843,23 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
             logger.info(f"- Unmounting Pool ({pool.name}) mount point {pool.mnt_pt}.")
             umount_root(pool.mnt_pt)
             logger.info(
-                f"Removing Pool ({pool.name}) management and associated configuration."
+                f"Removing Pool ({pool.name}) management and associated configuration. "
             )
             pool.delete()
             # We may need to update disk state here.
+            if share_name_list:
+                logger.debug(f"Share names affected: {share_name_list}.")
+                # Our SambaShare.delete() override to update smb.conf is bypassed
+                # during mass deletes; such as the pool.delete we just enacted:
+                # SambaShare.share = models.OneToOneField
+                #  ("Share", related_name="sambashare", on_delete=models.CASCADE)
+                # Share.pool = models.ForeignKey(Pool, on_delete=models.CASCADE)
+                # Ergo we opportunistically mass config remove all now unmanaged Pool
+                # Shares; irrespective of their prior export status.
+                # fast & singular smb.conf edit.
+                smb_config_updated: bool = remove_smb_export(share_name_list)
+                if smb_config_updated:
+                    logger.info("SMB config updated.")
             return Response()
 
 

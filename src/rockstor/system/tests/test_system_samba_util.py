@@ -141,9 +141,9 @@ class SystemSambaUtilTests(TestCase):
     def test_remove_smb_export(self):
         self.assertTrue(os.path.exists(SMB_CONFIG))
         self.mock_testparm.return_value = True
-        self.assertTrue(remove_smb_export("share3"))
+        self.assertTrue(remove_smb_export(["share3"]))
         self.mock_testparm.assert_called_once()
-        self.assertFalse(remove_smb_export("non-existent-share"))
+        self.assertFalse(remove_smb_export(["non-existent-share"]))
         # Check that we did not call testparm again:
         self.mock_testparm.assert_called_once()
         # with open(SMB_CONFIG) as written_content:
@@ -154,15 +154,17 @@ class SystemSambaUtilTests(TestCase):
         self.mock_testparm.side_effect = Exception(
             "Syntax error while checking the temporary samba config file"
         )
-        self.assertFalse(remove_smb_export("share1"))
+        self.assertFalse(remove_smb_export(["share1"]))
+        # Reset testparm to have not side_effect:
         self.mock_testparm.side_effect = None
-        self.assertTrue(remove_smb_export("share1"))
-        self.assertTrue(remove_smb_export("share2"))
+        self.assertTrue(remove_smb_export(["share1", "share2"]))
         # with open(SMB_CONFIG) as written_content:
         #     print(written_content.read())
         with open(SMB_CONFIG) as written_content:
             self.assertEqual(written_content.read(), ALL_EXPORTS_REMOVED_SMB_CONFIG)
+        self.assertFalse(remove_smb_export([]))
+        self.assertFalse(remove_smb_export(["", ""]))
         os.remove(SMB_CONFIG)
         self.assertFalse(os.path.exists(SMB_CONFIG))
         # Ensure robustness to no smb.conf file existing.
-        self.assertFalse(remove_smb_export("some-share"))
+        self.assertFalse(remove_smb_export(["some-share"]))
