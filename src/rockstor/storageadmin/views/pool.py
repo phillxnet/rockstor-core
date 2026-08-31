@@ -21,6 +21,13 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from django.db import transaction
 
+from settings import (
+    COMPRESSION_TYPES,
+    NFS_EXPORT_ROOT,
+    MNT_PT,
+    SFTP_MNT_ROOT,
+    POOL_REGEX,
+)
 from smart_manager.models import TaskDefinition
 from storageadmin.serializers import PoolInfoSerializer
 from storageadmin.models import Disk, Pool, Share, PoolBalance
@@ -44,8 +51,8 @@ from fs.btrfs import (
 from system.docker import docker_status
 from system.osi import remount, trigger_udev_update
 from system.samba_util import remove_smb_export
+from system.nfs_util import remove_nfs_exports
 from storageadmin.util import handle_exception
-from django.conf import settings
 import rest_framework_custom as rfc
 import json
 
@@ -157,10 +164,10 @@ class PoolMixin(object):
         compression = request.data.get("compression", "no")
         if compression is None or compression == "":
             compression = "no"
-        if compression not in settings.COMPRESSION_TYPES:
+        if compression not in COMPRESSION_TYPES:
             e_msg = (
                 f"Unsupported compression algorithm ({compression}). "
-                f"Use one of {settings.COMPRESSION_TYPES}."
+                f"Use one of {COMPRESSION_TYPES}."
             )
             handle_exception(Exception(e_msg), request)
         return compression
@@ -174,7 +181,7 @@ class PoolMixin(object):
             "autodefrag": None,
             "clear_cache": None,
             "commit": int,
-            "compress-force": settings.COMPRESSION_TYPES,
+            "compress-force": COMPRESSION_TYPES,
             "degraded": None,
             "discard": None,
             "enospc_debug": None,
@@ -214,9 +221,7 @@ class PoolMixin(object):
                 )
                 handle_exception(Exception(e_msg), request)
             if o == "compress-force" and v not in allowed_options["compress-force"]:
-                e_msg = (
-                    f"compress-force is only allowed with {settings.COMPRESSION_TYPES}."
-                )
+                e_msg = f"compress-force is only allowed with {COMPRESSION_TYPES}."
                 handle_exception(Exception(e_msg), request)
             # changed conditional from "if (type(allowed_options[o]) is int):"
             if allowed_options[o] is int:
@@ -249,12 +254,9 @@ class PoolMixin(object):
             mount_map = {}
             for l in mfo.readlines():
                 share_name = None
-                if (
-                    re.search(f"{settings.NFS_EXPORT_ROOT}|{settings.MNT_PT}", l)
-                    is not None
-                ):
+                if re.search(f"{NFS_EXPORT_ROOT}|{MNT_PT}", l) is not None:
                     share_name = l.split()[1].split("/")[2]
-                elif re.search(settings.SFTP_MNT_ROOT, l) is not None:
+                elif re.search(SFTP_MNT_ROOT, l) is not None:
                     share_name = l.split()[1].split("/")[3]
                 else:
                     continue
@@ -393,7 +395,7 @@ class PoolListView(PoolMixin, rfc.GenericView):
             #  N.B. we have an existing test for this 'NoneType' response !!
             disks = [self._validate_disk(d, request) for d in request.data.get("disks")]
             pname = request.data["pname"]
-            if re.match(f"{settings.POOL_REGEX}$", pname) is None:
+            if re.match(f"{POOL_REGEX}$", pname) is None:
                 e_msg = (
                     "Invalid characters in pool name. Following "
                     "characters are allowed: letter(a-z or A-Z), "
@@ -860,6 +862,10 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                 smb_config_updated: bool = remove_smb_export(share_name_list)
                 if smb_config_updated:
                     logger.info("SMB config updated.")
+                # Remove all current or past NFS exports for all affected Shares.
+                nfs_config_updated: bool = remove_nfs_exports(share_name_list)
+                if nfs_config_updated:
+                    logger.info("NFS config updated.")
             return Response()
 
 
