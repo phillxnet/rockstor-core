@@ -57,3 +57,8 @@ RS_AD_HEADER = "####BEGIN: Rockstor ACTIVE DIRECTORY CONFIG####"
 RS_AD_FOOTER = "####END: Rockstor ACTIVE DIRECTORY CONFIG####"
 RS_CUSTOM_HEADER = "####BEGIN: Rockstor SAMBA GLOBAL CUSTOM####"
 RS_CUSTOM_FOOTER = "####END: Rockstor SAMBA GLOBAL CUSTOM####"
+
+# NFS
+
+NFS_CONFIG = "/etc/exports"
+NFS_EXPORT_ROOT: str = "/export/"

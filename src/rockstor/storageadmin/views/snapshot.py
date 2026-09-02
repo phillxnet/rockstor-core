@@ -34,6 +34,7 @@ from fs.btrfs import (
     mount_snap,
     qgroup_assign,
 )
+from system.constants import NFS_EXPORT_ROOT
 from system.nfs_util import refresh_nfs_exports
 from storageadmin.serializers import SnapshotSerializer
 from storageadmin.util import handle_exception
@@ -84,7 +85,7 @@ class SnapshotView(NFSExportMixin, rfc.GenericView):
         # The following may be buggy when used with system mounted (fstab) /home
         # but we currently don't allow /home to be exported.
         snap_mnt_pt = f"{settings.MNT_PT}{share.name}/.{snap_name}"
-        export_pt = snap_mnt_pt.replace(settings.MNT_PT, settings.NFS_EXPORT_ROOT)
+        export_pt = snap_mnt_pt.replace(settings.MNT_PT, NFS_EXPORT_ROOT)
         if on:
             mount_snap(share, snap_name, snap_qgroup)
             ########################################################

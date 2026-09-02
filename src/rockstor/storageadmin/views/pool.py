@@ -23,7 +23,6 @@ from django.db import transaction
 
 from settings import (
     COMPRESSION_TYPES,
-    NFS_EXPORT_ROOT,
     MNT_PT,
     SFTP_MNT_ROOT,
     POOL_REGEX,
@@ -48,10 +47,11 @@ from fs.btrfs import (
     PROFILE,
     get_pool_labels,
 )
+from system.constants import NFS_EXPORT_ROOT
 from system.docker import docker_status
 from system.osi import remount, trigger_udev_update
 from system.samba_util import remove_smb_export
-from system.nfs_util import remove_nfs_exports
+from system.nfs_util import remove_nfs_export
 from storageadmin.util import handle_exception
 import rest_framework_custom as rfc
 import json
@@ -821,7 +821,6 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                             )
                             export_set.export_group.delete()
                         so.nfsexport_set.all().delete()
-                        # TODO: Remove relevant share entries from /etc/exports
                     # SNAPSHOT TASKS
                     # Akin to NFS EXPORTS, we have no Share cascade delete for these
                     # tasks. Find and remove all of this Share's snapshot tasks before
@@ -862,10 +861,12 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                 smb_config_updated: bool = remove_smb_export(share_name_list)
                 if smb_config_updated:
                     logger.info("SMB config updated.")
+                    # TODO: Background samba service restart
                 # Remove all current or past NFS exports for all affected Shares.
-                nfs_config_updated: bool = remove_nfs_exports(share_name_list)
+                nfs_config_updated: bool = remove_nfs_export(share_name_list)
                 if nfs_config_updated:
                     logger.info("NFS config updated.")
+                    # TODO: Background NFS service restart
             return Response()
 
 

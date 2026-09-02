@@ -25,6 +25,7 @@ from storageadmin.serializers import (
     AdvancedNFSExportSerializer,
 )
 from fs.btrfs import mount_share
+from system.constants import NFS_EXPORT_ROOT
 from system.nfs_util import refresh_nfs_exports, nfs4_mount_teardown
 from storageadmin.views.share_helpers import validate_share
 import rest_framework_custom as rfc
@@ -41,7 +42,7 @@ class NFSExportMixin(object):
         ci = {
             "client_str": eg.host_str,
             "option_list": f"{eg.editable},{eg.syncable},{eg.mount_security}",
-            "mnt_pt": export.mount.replace(settings.NFS_EXPORT_ROOT, settings.MNT_PT),
+            "mnt_pt": export.mount.replace(NFS_EXPORT_ROOT, settings.MNT_PT),
         }
 
         if eg.admin_host is not None:
@@ -86,7 +87,7 @@ class NFSExportMixin(object):
         exports_d = {}
         for e in exports:
             e_list = []
-            export_pt = f"{settings.NFS_EXPORT_ROOT}{e.share.name}"
+            export_pt = f"{NFS_EXPORT_ROOT}{e.share.name}"
             if e.export_group.nohide:
                 snap_name = e.mount.split("/")[-1]
                 export_pt = f"{export_pt}/{snap_name}"
@@ -165,7 +166,7 @@ class NFSExportGroupListView(NFSExportMixin, rfc.GenericView):
             eg.save()
             for s in shares:
                 mnt_pt = f"{settings.MNT_PT}{s.name}"
-                export_pt = f"{settings.NFS_EXPORT_ROOT}{s.name}"
+                export_pt = f"{NFS_EXPORT_ROOT}{s.name}"
                 mount_share(s, mnt_pt)
                 export = NFSExport(export_group=eg, share=s, mount=export_pt)
                 export.full_clean()
@@ -198,7 +199,7 @@ class NFSExportGroupDetailView(NFSExportMixin, rfc.GenericView):
             eg = self.validate_export_group(export_id, request)
             cur_exports = list(NFSExport.objects.all())
             for e in NFSExport.objects.filter(export_group=eg):
-                export_pt = f"{settings.NFS_EXPORT_ROOT}{e.share.name}"
+                export_pt = f"{NFS_EXPORT_ROOT}{e.share.name}"
                 for (
                     snaps
                 ) in (
@@ -252,7 +253,7 @@ class NFSExportGroupDetailView(NFSExportMixin, rfc.GenericView):
                     shares.remove(e.share)
             for s in shares:
                 mnt_pt = f"{settings.MNT_PT}{s.name}"
-                export_pt = f"{settings.NFS_EXPORT_ROOT}{s.name}"
+                export_pt = f"{NFS_EXPORT_ROOT}{s.name}"
                 if not s.is_mounted:
                     mount_share(s, mnt_pt)
                 export = NFSExport(export_group=eg, share=s, mount=export_pt)

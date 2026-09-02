@@ -20,8 +20,7 @@ import shutil
 import time
 from tempfile import mkstemp
 
-from settings import NFS_EXPORT_ROOT
-from system.constants import MKDIR, MOUNT, UMOUNT, RMDIR
+from system.constants import MKDIR, MOUNT, UMOUNT, RMDIR, NFS_CONFIG, NFS_EXPORT_ROOT
 from system.osi import run_command, is_mounted, toggle_path_rw
 
 EXPORTFS = "/usr/sbin/exportfs"
@@ -101,6 +100,8 @@ def refresh_nfs_exports(exports):
                         "{}:{}".format(c["client_str"], e),
                     ]
                 )
+                # TODO we have a trailing space here - likely to accommodate multiple
+                #  entries but still!!
                 client_str = "{}{}({}) ".format(
                     client_str, c["client_str"], c["option_list"]
                 )
@@ -121,11 +122,11 @@ def refresh_nfs_exports(exports):
             efo.write(export_str)
         for s in shares:
             nfs4_mount_teardown(s)
-    shutil.move(npath, "/etc/exports")
+    shutil.move(npath, NFS_CONFIG)
     return run_command([EXPORTFS, "-ra"])
 
 
-def remove_nfs_exports(share_name_list: list[str]) -> bool:
+def remove_nfs_export(share_name_list: list[str]) -> bool:
     """
     Intended as a light-weight option to remove all NFS export entries
     pertaining to the passed list of Share.names. Intentionally low-level
@@ -134,14 +135,14 @@ def remove_nfs_exports(share_name_list: list[str]) -> bool:
     :param share_name_list: List of Share names to remove, if found, in /etc/exports.
     :return: Bool on changes written.
     """
-    if not os.path.exists("/etc/exports") or share_name_list == []:
+    if not os.path.exists(NFS_CONFIG) or share_name_list == []:
         return False
     nfs_modified: bool = False
     fh, npath = mkstemp()
-    with open("/etc/exports", "r") as nfs_exports, open(npath, "w") as temp_file:
+    with open(NFS_CONFIG, "r") as nfs_exports, open(npath, "w") as temp_file:
         for line in nfs_exports:
             if any(
-                line.startswith(f"{NFS_EXPORT_ROOT}/{share_name} ")
+                line.startswith(f"{NFS_EXPORT_ROOT}{share_name}")
                 for share_name in share_name_list
             ):
                 nfs_modified = True
@@ -149,7 +150,7 @@ def remove_nfs_exports(share_name_list: list[str]) -> bool:
             else:
                 temp_file.write(line)
     if nfs_modified:
-        shutil.move(npath, "/etc/exports")
+        shutil.move(npath, NFS_CONFIG)
         return nfs_modified
     else:
         os.remove(npath)
