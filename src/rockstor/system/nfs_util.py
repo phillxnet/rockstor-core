@@ -39,8 +39,12 @@ I.e.:
 
 def nfs4_mount_teardown(export_pt):
     """
-    reverse of setup. cleanup when there are no more exports
+    If the passed path is mounted, unmount and retry enabling rw on mount point.
+    Then remove the mount point directory itself.
+    N.B. Moved from system.osi.
     """
+    # TODO: Modify to take list of export_paths for use after remove_nfs_export()
+    #  and to avoid the loop at the end of refresh_nfs_exports()
     if is_mounted(export_pt):
         run_command([UMOUNT, "-l", export_pt])
         for i in range(10):
@@ -56,6 +60,15 @@ def nfs4_mount_teardown(export_pt):
 
 
 def bind_mount(mnt_pt, export_pt):
+    """
+    Convenience wrapper around:
+    - `mkdir /export/share-name` if a mount does not already exist there.
+    - `mount --bind mnt_pt export_pt`
+    N.B. Moved from system.osi.
+    :param mnt_pt: Share mount path, e.g.: `/mnt2/nfs_export1`
+    :param export_pt: Where to bind mount for NFS exporting: e.g.: `/export/nfs_export1`
+    :return: o, e, rc from mount command, or True if already mounted.
+    """
     if not is_mounted(export_pt):
         run_command([MKDIR, "-p", export_pt])
         toggle_path_rw(export_pt, rw=False)
@@ -63,20 +76,61 @@ def bind_mount(mnt_pt, export_pt):
     return True
 
 
-def refresh_nfs_exports(exports):
+def valid_export(options: str, mapping: str) -> bool:
     """
-    input format:
+    Runs `exportfs -i -o options mapping` to validate the passed parameters.
+    -i ignores /etc/exports and files under /etc/exports.d & enforces default
+      options where not specified.
+    On unfavourable outcome (rc != 0 currently) we return False.
+    :param options: NFS exportfs options (-o) e.g. "ro,sync,insecure"
+    :param mapping: NFS exportfs mapping e.g. "192.168.2.2:/export/nfs_export2"
+    :return: True if test export executed without issue. False otherwise
+    """
+    out, err, rc = run_command(
+        [EXPORTFS, "-i", "-o", options, mapping], throw=False, log=True
+    )
+    if rc != 0:
+        return False
+    return True
 
+
+def reexport_all() -> bool:
+    """
+    Runs `exportfs -ra` to re-assert all exports in /etc/exports & in files under
+    /etc/exports.d by syncing their content to /var/lib/nfs/etab.
+    N.B. Also unexports any prior exports no longer found in the above files.
+    From 'man exportfs':
+    "-a     Export or unexport all directories."
+    # -r Reexport all and sync /var/lib/nfs/etab with /etc/exports and
+    files under /etc/exports.d.
+    :return:
+    """
+    out, err, rc = run_command([EXPORTFS, "-ra"], throw=False, log=True)
+    if rc != 0:
+        return False
+    return True
+
+def refresh_nfs_exports(exports: dict):
+    """
+    The master NFS export table is /var/lib/nfs/etab, informed by /etc/exports and the
+    files under /etc/exports.d. We manage only the contents of /etc/exports:
+    - refreshes are whole-sale all-share looped calls to `exportfs -i -o ...`
+      to validate the options and mappings before creating that Shares nfs export line.
+    - a subsequent call to `exportfs -ra` to assert the new contents of /etc/exports.
+    N.B. `exportfs -ra` validates hostname, ommiting their config if resolution fails.
+    #
+    See: remove_nfs_export() for per share remove edits after Pool management delete.
+    Example exports dict
     {'export_point': [{'client_str': 'www.example.com',
                        'option_list': 'rw,insecure,'
                        'mnt_pt': mnt_pt,},],
                        ...}
-
     if 'clients' is an empty list, then unmount and cleanup.
+    N.B. Moved from system.osi.
     """
     fo, npath = mkstemp()
     with open(npath, "w") as efo:
-        shares = []
+        shares = []  # Associated export paths e.g. `/export/nfs_export1`.
         for e in exports.keys():
             if len(exports[e]) == 0:
                 #  do share tear down at the end, only snaps here
@@ -85,45 +139,30 @@ def refresh_nfs_exports(exports):
                 else:
                     shares.append(e)
                 continue
-
             if not is_mounted(e):
                 bind_mount(exports[e][0]["mnt_pt"], e)
             client_str = ""
             admin_host = None
             for c in exports[e]:
-                run_command(
-                    [
-                        EXPORTFS,
-                        "-i",
-                        "-o",
-                        c["option_list"],
-                        "{}:{}".format(c["client_str"], e),
-                    ]
-                )
-                # TODO we have a trailing space here - likely to accommodate multiple
-                #  entries but still!!
-                client_str = "{}{}({}) ".format(
-                    client_str, c["client_str"], c["option_list"]
-                )
+                if not valid_export(
+                    options=c["option_list"], mapping=f"{c['client_str']}:{e}"
+                ):
+                    continue  # skip invalid options or client:export values.
+                client_str = f"{client_str}{c['client_str']}({c['option_list']})"
                 if "admin_host" in c:
                     admin_host = c["admin_host"]
             if admin_host is not None:
-                run_command(
-                    [
-                        EXPORTFS,
-                        "-i",
-                        "-o",
-                        "rw,no_root_squash",
-                        "{}:{}".format(admin_host, e),
-                    ]
-                )
-                client_str = "{} {}(rw,no_root_squash)".format(client_str, admin_host)
-            export_str = "{} {}\n".format(e, client_str)
+                if not valid_export(
+                    options="rw,no_root_squash", mapping=f"{admin_host}:{e}"
+                ):
+                    continue  # skip invalid admin_host config.
+                client_str = f"{client_str} {admin_host}(rw,no_root_squash)"
+            export_str = f"{e} {client_str}\n"
             efo.write(export_str)
         for s in shares:
             nfs4_mount_teardown(s)
     shutil.move(npath, NFS_CONFIG)
-    return run_command([EXPORTFS, "-ra"])
+    return reexport_all()
 
 
 def remove_nfs_export(share_name_list: list[str]) -> bool:
@@ -132,6 +171,7 @@ def remove_nfs_export(share_name_list: list[str]) -> bool:
     pertaining to the passed list of Share.names. Intentionally low-level
     to facilitate rapid adaptation of /etc/exports to mass Share removal
     such as when a Pool's management is deleted.
+    Requires follow-up call to reexport_all().
     :param share_name_list: List of Share names to remove, if found, in /etc/exports.
     :return: Bool on changes written.
     """
