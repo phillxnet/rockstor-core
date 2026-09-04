@@ -51,7 +51,7 @@ from system.constants import NFS_EXPORT_ROOT
 from system.docker import docker_status
 from system.osi import remount, trigger_udev_update
 from system.samba_util import remove_smb_export
-from system.nfs_util import remove_nfs_export
+from system.nfs_util import remove_nfs_export, nfs4_mount_teardown
 from storageadmin.util import handle_exception
 import rest_framework_custom as rfc
 import json
@@ -785,6 +785,7 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                         # A TaskDefinition.delete() override updates our CRONTAB_FILE.
                         taskdef.delete()
             share_name_list = []
+            nfs_exports_list = []
             if Share.objects.filter(pool=pool).exists():
                 if not force:
                     e_msg = (
@@ -815,6 +816,7 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                     # linked export_groups before removing all related export_sets.
                     if so.nfsexport_set.exists():
                         logger.info(f"- Deleting NFS DB configs for Share ({so.name}).")
+                        nfs_exports_list.append(f"{NFS_EXPORT_ROOT}{so.name}")
                         for export_set in so.nfsexport_set.all():
                             logger.info(
                                 f"- Deleting config for host {export_set.export_group.host_str}"
@@ -866,6 +868,8 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                 nfs_config_updated: bool = remove_nfs_export(share_name_list)
                 if nfs_config_updated:
                     logger.info("NFS config updated.")
+                    # TODO: the following can be long running so do in background task.
+                    nfs4_mount_teardown(nfs_exports_list)
                     # TODO: Background NFS service restart
             return Response()
 

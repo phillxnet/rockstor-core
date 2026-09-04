@@ -207,13 +207,13 @@ class NFSExportGroupDetailView(NFSExportMixin, rfc.GenericView):
                 ):  # #2995 Iterate through current mounts to find snaps and delete them before deleting base share
                     if snaps.mount.count(export_pt + "/."):
                         logger.info(f"Deleting snapshot export {snaps.mount} ")
-                        nfs4_mount_teardown(f"{snaps.mount}")
+                        nfs4_mount_teardown([f"{snaps.mount}"])
                         cur_exports.remove(snaps)
                         snaps.delete()
                 if e.export_group.nohide:
                     snap_name = e.mount.split(e.share.name + "_")[-1]
                     export_pt = f"{export_pt}/{snap_name}"
-                nfs4_mount_teardown(export_pt)
+                nfs4_mount_teardown([export_pt])
                 cur_exports.remove(e)
                 e.delete()
             # Following conditional delete was informed by test_nfs_export.py:

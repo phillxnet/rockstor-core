@@ -37,25 +37,35 @@ I.e.:
 """
 
 
-def nfs4_mount_teardown(export_pt):
+def nfs4_mount_teardown(export_paths: list[str]):
     """
-    If the passed path is mounted, unmount and retry enabling rw on mount point.
-    Then remove the mount point directory itself.
+    If the passed path is mounted:
+    1. Do a lazy unmount and check every second for 10 seconds before force unmounting.
+    2. Ensure mount point dir is read-write.
+    3. Remove mount point dir.
+    :param export_paths: Bind mount points for NFS exports e.g.: `/export/nfs_export1`
     N.B. Moved from system.osi.
     """
-    # TODO: Modify to take list of export_paths for use after remove_nfs_export()
-    #  and to avoid the loop at the end of refresh_nfs_exports()
-    if is_mounted(export_pt):
-        run_command([UMOUNT, "-l", export_pt])
-        for i in range(10):
-            if not is_mounted(export_pt):
-                toggle_path_rw(export_pt, rw=True)
-                return run_command([RMDIR, export_pt])
-            time.sleep(1)
-        run_command([UMOUNT, "-f", export_pt])
-    if os.path.exists(export_pt):
-        toggle_path_rw(export_pt, rw=True)
-        run_command([RMDIR, export_pt])
+    # N.B. candidate for parallelisation.
+    for export_path in export_paths:
+        if not export_path.startswith(NFS_EXPORT_ROOT):
+            continue
+        if is_mounted(export_path):
+            # -l Lazy: detach fs now, clean-up referendes to the fs once no longer busy.
+            run_command([UMOUNT, "-l", export_path], log=True)
+            # Re-test mount status for 10 seconds, once unmounted make mount point dir rw.
+            unmounted: bool = False
+            for i in range(10):
+                if not is_mounted(export_path):
+                    unmounted = True
+                    break
+                    # return run_command([RMDIR, export_path])
+                time.sleep(1)
+            if not unmounted:  # still, then force unmount.
+                run_command([UMOUNT, "--force", export_path], log=True)
+            # Ensure mount point is not read-only so we can clean up.
+            toggle_path_rw(export_path, rw=True)
+        run_command([RMDIR, export_path])
     return True
 
 
@@ -131,22 +141,23 @@ def refresh_nfs_exports(exports: dict):
     """
     fo, npath = mkstemp()
     with open(npath, "w") as efo:
-        shares = []  # Associated export paths e.g. `/export/nfs_export1`.
-        for e in exports.keys():
-            if len(exports[e]) == 0:
+        # Associated export paths export_path.g. `/export/nfs_export1`.
+        export_paths: list = []
+        for export_path in exports.keys():
+            if len(exports[export_path]) == 0:
                 #  do share tear down at the end, only snaps here
-                if len(e.split("/")) == 4:
-                    nfs4_mount_teardown(e)
+                if len(export_path.split("/")) == 4:
+                    nfs4_mount_teardown([export_path])
                 else:
-                    shares.append(e)
+                    export_paths.append(export_path)
                 continue
-            if not is_mounted(e):
-                bind_mount(exports[e][0]["mnt_pt"], e)
+            if not is_mounted(export_path):
+                bind_mount(exports[export_path][0]["mnt_pt"], export_path)
             client_str = ""
             admin_host = None
-            for c in exports[e]:
+            for c in exports[export_path]:
                 if not valid_export(
-                    options=c["option_list"], mapping=f"{c['client_str']}:{e}"
+                    options=c["option_list"], mapping=f"{c['client_str']}:{export_path}"
                 ):
                     continue  # skip invalid options or client:export values.
                 client_str = (
@@ -156,14 +167,13 @@ def refresh_nfs_exports(exports: dict):
                     admin_host = c["admin_host"]
             if admin_host is not None:
                 if not valid_export(
-                    options="rw,no_root_squash", mapping=f"{admin_host}:{e}"
+                    options="rw,no_root_squash", mapping=f"{admin_host}:{export_path}"
                 ):
                     continue  # skip invalid admin_host config.
                 client_str = f"{client_str} {admin_host}(rw,no_root_squash)"
-            export_str = f"{e} {client_str}\n"
+            export_str = f"{export_path} {client_str}\n"
             efo.write(export_str)
-        for s in shares:
-            nfs4_mount_teardown(s)
+        nfs4_mount_teardown(export_paths)
     shutil.move(npath, NFS_CONFIG)
     return reexport_all()
 
