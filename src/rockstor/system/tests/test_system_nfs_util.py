@@ -42,7 +42,12 @@ INITIAL_NFS_DICT = {
             "client_str": "192.168.2.2",
             "option_list": "rw,async,insecure",
             "mnt_pt": "/mnt2/nfs_export2",
-        }
+        },
+        {
+            "client_str": "192.168.4.4",
+            "option_list": "ro,sync,insecure",
+            "mnt_pt": "/mnt2/nfs_export2",
+        },
     ],
     "/export/nfs_export3": [
         {
@@ -56,18 +61,17 @@ INITIAL_NFS_DICT = {
 
 # Currently creates the following NFS_CONFIG:
 
-INITIAL_NFS_CONFIG = \
-r"""/export/nfs_export1 *(rw,async,insecure)
-/export/nfs_export2 192.168.2.2(rw,async,insecure)
+INITIAL_NFS_CONFIG = r"""/export/nfs_export1 *(rw,async,insecure)
+/export/nfs_export2 192.168.2.2(rw,async,insecure) 192.168.4.4(ro,sync,insecure)
 /export/nfs_export3 192.168.2.4(ro,sync,insecure) adminhost.lan(rw,no_root_squash)
 """
 
-ONE_EXPORT_REMOVED_NFS_CONFIG = \
-r"""/export/nfs_export1 *(rw,async,insecure)
+ONE_EXPORT_REMOVED_NFS_CONFIG = r"""/export/nfs_export1 *(rw,async,insecure)
 /export/nfs_export3 192.168.2.4(ro,sync,insecure) adminhost.lan(rw,no_root_squash)
 """
 
 ALL_EXPORTS_REMOVED_NFS_CONFIG = r""""""
+
 
 class SystemNfsUtilTests(TestCase):
     """

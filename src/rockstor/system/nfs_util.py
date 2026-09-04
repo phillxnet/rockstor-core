@@ -110,6 +110,7 @@ def reexport_all() -> bool:
         return False
     return True
 
+
 def refresh_nfs_exports(exports: dict):
     """
     The master NFS export table is /var/lib/nfs/etab, informed by /etc/exports and the
@@ -148,7 +149,9 @@ def refresh_nfs_exports(exports: dict):
                     options=c["option_list"], mapping=f"{c['client_str']}:{e}"
                 ):
                     continue  # skip invalid options or client:export values.
-                client_str = f"{client_str}{c['client_str']}({c['option_list']})"
+                client_str = (
+                    f"{client_str} {c['client_str']}({c['option_list']})".strip()
+                )
                 if "admin_host" in c:
                     admin_host = c["admin_host"]
             if admin_host is not None:
