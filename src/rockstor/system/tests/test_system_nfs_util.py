@@ -82,13 +82,10 @@ class SystemNfsUtilTests(TestCase):
     For NFS API tests see: storageadmin/tests/test_nfs_export.py
     """
 
-    @classmethod
-    def setUpClass(cls):
-        cls.setUpClassPyfakefs()
-        # Re-establish the start-state of the filesystem before every test.
-        cls.fake_fs().create_file(NFS_CONFIG, contents=INITIAL_NFS_CONFIG)
-
     def setUp(self):
+        self.setUpPyfakefs()
+        # Re-establish the start-state of the filesystem before every test.
+        self.fake_fs().create_file(NFS_CONFIG, contents=INITIAL_NFS_CONFIG)
         # Mock bind_mount(): wrapper for:
         # - `mkdir /export/share.name`
         # - `mount --bind /mnt2/share.name /export/share.name
@@ -120,6 +117,8 @@ class SystemNfsUtilTests(TestCase):
 
     def test_remove_nfs_export(self):
         self.assertTrue(os.path.exists(NFS_CONFIG))
+        with open(NFS_CONFIG) as initial_content:
+            self.assertEqual(initial_content.read(), INITIAL_NFS_CONFIG)
         self.assertTrue(remove_nfs_export(["nfs_export2"]))
         self.assertFalse(remove_nfs_export(["non-existent-share"]))
         with open(NFS_CONFIG) as written_content:
@@ -175,4 +174,7 @@ class SystemNfsUtilTests(TestCase):
         self.assertTrue(os.path.exists(NFS_CONFIG))
         with open(NFS_CONFIG) as written_content:
             self.assertEqual(written_content.read(), INITIAL_NFS_CONFIG)
-        # TODO: test refresh_nfs_exports({})
+        # Test refresh_nfs_exports({})
+        refresh_nfs_exports({})
+        with open(NFS_CONFIG) as written_content:
+            self.assertEqual(written_content.read(), ALL_EXPORTS_REMOVED_NFS_CONFIG)
