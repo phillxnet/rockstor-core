@@ -20,14 +20,11 @@ from datetime import datetime, timezone
 from os import stat, stat_result
 from stat import S_IMODE
 
-from settings import SFTP_MNT_ROOT, MODEL_DEFS, MNT_PT
+from settings import MODEL_DEFS, MNT_PT
 from storageadmin.models import Share, Snapshot, SFTP
 from smart_manager.models import ShareUsage
 from fs.btrfs import (
     mount_share,
-    mount_snap,
-    is_mounted,
-    umount_root,
     shares_info,
     volume_usage,
     snaps_info,
@@ -66,29 +63,6 @@ def validate_share(sname, request):
     except:
         e_msg = f"Share with name ({sname}) does not exist."
         handle_exception(Exception(e_msg), request)
-
-
-def sftp_snap_toggle(share, mount=True):
-    for snap in Snapshot.objects.filter(share=share, uvisible=True):
-        mnt_pt = f"{SFTP_MNT_ROOT}{share.owner}/{share.name}/.{snap.name}"
-        if mount and not is_mounted(mnt_pt):
-            mount_snap(share, snap.name, snap.qgroup, mnt_pt)
-        elif is_mounted(mnt_pt) and not mount:
-            umount_root(mnt_pt)
-
-
-def toggle_sftp_visibility(share, snap_name, snap_qgroup, on=True):
-    if not SFTP.objects.filter(share=share).exists():
-        return
-
-    mnt_pt = f"{SFTP_MNT_ROOT}{share.owner}/{share.name}/.{snap_name}"
-
-    if on:
-        if not is_mounted(mnt_pt):
-            mount_snap(share, snap_name, snap_qgroup, mnt_pt)
-    else:
-        if os.path.exists(mnt_pt):
-            umount_root(mnt_pt)
 
 
 def import_shares(pool, request):

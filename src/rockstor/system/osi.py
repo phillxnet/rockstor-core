@@ -42,6 +42,7 @@ from system.constants import (
     UDEVADM,
     SHUTDOWN,
     LDD,
+    FINDMNT,
 )
 
 logger = logging.getLogger(__name__)
@@ -514,6 +515,8 @@ def rm_tmp_dir(dirname):
 
 
 def toggle_path_rw(path, rw=True):
+    if not os.path.exists(path):
+        return None
     attr = "-i"
     if not rw:
         attr = "+i"
@@ -696,11 +699,13 @@ def getdnsdomain():
 
 def is_share_mounted(sname, mnt_prefix=DEFAULT_MNT_DIR):
     mnt_pt = mnt_prefix + sname
-    return mount_status(mnt_pt, RETURN_BOOLEAN)
+    result = mount_status(mnt_pt, RETURN_BOOLEAN)
+    return result
 
 
 def is_mounted(mnt_pt):
-    return mount_status(mnt_pt, RETURN_BOOLEAN)
+    result = mount_status(mnt_pt, RETURN_BOOLEAN)
+    return result
 
 
 def mount_status(mnt_pt, return_boolean=False):
@@ -739,6 +744,34 @@ def mount_status(mnt_pt, return_boolean=False):
     return "unmounted"
 
 
+def findmnt_bool(mnt_pt: str) -> bool:
+    """
+    OS findmnt binary (util-linux-systemd) wrapper: True if active mount at mnt_pt.
+    To potentially supplant mount_status / is_mounted / is_share_mounted using Python
+    parsed output from /proc/mounts.
+    :param mnt_pt: Filesystem path.
+    :return: True if a mount exists, else False.
+    """
+    # For all mounts on a path: `findmnt -o TARGET -n /path` e.g.:
+    # `findmnt -o TARGET -n /mnt2/sftp-share1/.sftp-share1-snap2`
+    # `/mnt2/sftp-share1/.sftp-share1-snap2`
+    # `/mnt2/sftp-share1/.sftp-share1-snap2`
+    # Indicating an inadvertent double mount of this snapshot under its parent share!!
+    #
+    # `--list` output has no tree formatting: one entry per line. For a double mount, as
+    #  above; this would generate two lines each with the same TARGET (column 1).
+    # `--output` comma separated column list: TARGET Column by default is tree format.
+    # `--noheadings` do-not print headings.
+    cmd = [FINDMNT, "--list", "--output", "TARGET", mnt_pt]
+    result: bool = False
+    _, _, rc = run_command(cmd, throw=False)
+    # rc=1 when no mounts exist, or when the mnt_pt does not exist.
+    if rc == 0:  # mount exists
+        result = True
+    logger.info(f"  ***DEV: findmnt_bool({mnt_pt}) returned: {result}")
+    return result
+
+
 def dev_mount_point(dev_temp_name):
     """
     Parses /proc/mounts to return the first associated mount point for a given
@@ -766,7 +799,7 @@ def dev_mount_point(dev_temp_name):
 
 def remount(mnt_pt, mnt_options):
     if is_mounted(mnt_pt):
-        run_command([MOUNT, "-o", "remount,{}".format(mnt_options), mnt_pt])
+        run_command([MOUNT, "-o", f"remount,{mnt_options}", mnt_pt])
     return True
 
 

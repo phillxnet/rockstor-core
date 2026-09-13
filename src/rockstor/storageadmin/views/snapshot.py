@@ -40,7 +40,6 @@ from system.nfs_util import refresh_nfs_exports
 from storageadmin.serializers import SnapshotSerializer
 from storageadmin.util import handle_exception
 import rest_framework_custom as rfc
-from storageadmin.views.share_helpers import toggle_sftp_visibility
 from storageadmin.views.clone_helpers import create_clone, create_repclone
 from storageadmin.views.nfs_exports import NFSExportMixin
 
@@ -114,6 +113,8 @@ class SnapshotView(NFSExportMixin, rfc.GenericView):
         exports_d = self.create_adv_nfs_export_input(adv_entries, self.request)
         exports.update(exports_d)
         refresh_nfs_exports(exports)
+        # TODO: We may have some SFTP stand-down to do here.
+        # i.e. remove_sftp_bindmounts(sftpo.share.name, visible_snap_names, chroot_path)
 
     @transaction.atomic
     def _create(self, share, snap_name, request, uvisible, snap_type, writable):
@@ -186,18 +187,6 @@ class SnapshotView(NFSExportMixin, rfc.GenericView):
                         logger.error(msg)
                         logger.exception(e)
 
-                    try:
-                        toggle_sftp_visibility(
-                            share, ret.data["real_name"], ret.data["qgroup"]
-                        )
-                    except Exception as e:
-                        msg = (
-                            f"Failed to make the snapshot ({snap_name}) visible for SFTP. "
-                            f"Exception: ({e.__str__()})."
-                        )
-                        logger.error(msg)
-                        logger.exception(e)
-
                 return ret
             if command == "clone":
                 new_name = request.data.get("name", None)
@@ -261,7 +250,10 @@ class SnapshotView(NFSExportMixin, rfc.GenericView):
             self._toggle_visibility(
                 share, snapshot.real_name, snapshot.qgroup, on=False
             )
-            toggle_sftp_visibility(share, snapshot.real_name, snapshot.qgroup, on=False)
+            # As SFTP is a recursive bind mount (rbind), it reflects all submnt changes.
+            # toggle_sftp_visibility(share, snapshot.real_name, snapshot.qgroup, on=False)
+            # TODO: We may still have to call:
+            #  remove_sftp_bindmounts(sftpo.share.name, visible_snap_names, chroot_path)
 
         remove_snap_subvol(snapshot)
         snapshot.delete()

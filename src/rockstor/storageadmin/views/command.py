@@ -51,7 +51,6 @@ from storageadmin.util import handle_exception
 from datetime import datetime, UTC
 from django.db import transaction
 from storageadmin.views.share_helpers import (
-    sftp_snap_toggle,
     import_shares,
     import_snapshots,
 )
@@ -176,7 +175,7 @@ class CommandView(DiskMixin, NFSExportMixin, APIView):
                     continue
                 try:
                     if not share.is_mounted:
-                        # System mounted shares i.e. home will already be mounted.
+                        # System mounted shares.
                         mnt_pt = f"{MNT_PT}{share.name}"
                         mount_share(share, mnt_pt)
                         share.save()
@@ -192,16 +191,8 @@ class CommandView(DiskMixin, NFSExportMixin, APIView):
                     logger.error(e_msg)
                     logger.exception(e)
 
-            for snap in Snapshot.objects.all():
-                if snap.uvisible:
-                    try:
-                        mount_snap(snap.share, snap.real_name, snap.qgroup)
-                    except Exception as e:
-                        e_msg = f"Failed to make the snapshot ({snap.real_name}) visible. Exception: ({e.__str__()})."
-                        logger.error(e_msg)
-
+            # SFTP export -  recursive bind mount within share.owner chroot.
             mnt_map = sftp_mount_map(SFTP_MNT_ROOT)
-            logger.info(f"Bootstrap command, via sftp_mount_map() received {mnt_map}.")
             for sftpo in SFTP.objects.all():
                 # The following may be buggy when used with system mounted (fstab) /home
                 # but we currently don't allow /home to be exported.
@@ -213,11 +204,25 @@ class CommandView(DiskMixin, NFSExportMixin, APIView):
                         mnt_map,
                         sftpo.editable,
                     )
-                    sftp_snap_toggle(sftpo.share)
+                    # Following is redundant as the above bind mount is now recursive.
+                    # sftp_snap_toggle(sftpo.share)
                 except Exception as e:
                     e_msg = f"Exception while exporting a SFTP share during bootstrap: ({e.__str__()})."
                     logger.error(e_msg)
+                # TODO: We currently fail to unmount prior SFTP exports here.
+                #  And do not re-write our rockstor-sftp.conf with DB findings.
 
+            # Mount visible snapshots under their parent Shares.
+            for snap in Snapshot.objects.all():
+                if snap.uvisible:
+                    try:
+                        # Default /mnt2/share.name/.snap.name for visible snap subvols.
+                        mount_snap(snap.share, snap.real_name, snap.qgroup)
+                    except Exception as e:
+                        e_msg = f"Failed to make the snapshot ({snap.real_name}) visible. Exception: ({e.__str__()})."
+                        logger.error(e_msg)
+
+            # NFS exports
             try:
                 adv_entries = [a.export_str for a in AdvancedNFSExport.objects.all()]
                 exports_d = self.create_adv_nfs_export_input(adv_entries, request)

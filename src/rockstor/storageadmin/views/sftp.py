@@ -25,7 +25,6 @@ from settings import SFTP_MNT_ROOT, MNT_PT
 from storageadmin.views.share_helpers import (
     helper_mount_share,
     validate_share,
-    sftp_snap_toggle,
 )
 from storageadmin.models import SFTP, Snapshot
 from storageadmin.serializers import SFTPSerializer
@@ -78,7 +77,9 @@ class SFTPListView(rfc.GenericView):
                 helper_mount_share(share)
                 #  bindmount if not already
                 sftp_mount(share, MNT_PT, SFTP_MNT_ROOT, mnt_map, editable)
-                sftp_snap_toggle(share)
+                # Above sftp_mount() is now a recursive bind mount, and so also mirrors
+                # changes in the Share's submounts (user visible snapshots).
+                # sftp_snap_toggle(share)
 
                 chroot_loc = f"{SFTP_MNT_ROOT}{share.owner}"
                 rsync_for_sftp(chroot_loc)

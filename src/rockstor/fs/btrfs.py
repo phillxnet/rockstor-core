@@ -830,6 +830,18 @@ def mount_root(pool):
 
 
 def umount_root(root_pool_mnt):
+    """
+    Perform a lazy un-mount "umount -l root_pool_mnt".
+    if the passed root_pool_mnt exists, returning None if it doesn't.
+    Catch "... not mounted ..." exceptions and returning None also in that case.
+    Once the lazy umount has executed, expected to be imidate, we retest, with sleep,
+    for an ongoing mount 20 times. If during this period a mount is no longer found, the
+    root_pool_mnt directory is then removed via "rmdir root_pool_mnt".
+    A --force unmount is then performed if the above fails.
+
+    :param root_pool_mnt:
+    :return:
+    """
     if not os.path.exists(root_pool_mnt):
         return
     try:
@@ -839,12 +851,21 @@ def umount_root(root_pool_mnt):
             for l in ce.err:
                 l = l.strip()
                 if re.search(r"not mounted\.$", l) is not None:
-                    return
+                    return  # Here we skip the mount point removal!!
             raise ce
     for i in range(20):
         if not is_mounted(root_pool_mnt):
             toggle_path_rw(root_pool_mnt, rw=True)
+            # out, err, rc = run_command(["lsof", "+D", root_pool_mnt], log=True, throw=False)
+            # logger.info(f"lsof +d {root_pool_mnt} returned out={out}, err={err}, rc={rc}")
+            # above returns rc=1 if a file is still open.
+            # TODO: Look to findmnt to assist with assessing if lazy umount is done yet.
+            #  findmnt -o TARGET -n root_pool_mnt
+            # returns (rc=0) root_pool_mnt
             run_command([RMDIR, root_pool_mnt])
+            # rc = 1. stdout = [''].
+            # stderr = ["rmdir: failed to remove '/mnt3/chroot/share/.snap':
+            #  Device or resource busy", '']
             return
         time.sleep(2)
     run_command([UMOUNT, "-f", root_pool_mnt])
@@ -906,7 +927,7 @@ def mount_share(share, mnt_pt):
     # TODO: we could remove almost system wide many duplicates of temp mnt_pt
     # TODO: created just prior and only for this methods call.
     if is_mounted(mnt_pt):
-        return
+        return None
     mount_root(share.pool)
     pool_device = get_device_path(share.pool.disk_set.attached().first().target_name)
     qgroup = share.qgroup
@@ -916,20 +937,30 @@ def mount_share(share, mnt_pt):
     create_tmp_dir(mnt_pt)
     toggle_path_rw(mnt_pt, rw=False)
     mnt_cmd = [MOUNT, "-t", "btrfs", "-o", subvol_str, pool_device, mnt_pt]
-    return run_command(mnt_cmd)
+    return run_command(mnt_cmd, log=True)
 
 
-def mount_snap(share, snap_name, snap_qgroup, snap_mnt=None):
+def mount_snap(share, snap_name, snap_qgroup):
+    """
+    Mounts an intended visible snapshot subvolume under its parent share.mnt_pt.
+    - Snapshot subvol: `pool.mnt_pt/.snapshots/share.name/snap.name`.
+    - Target mnt_pt: `mnt2/share.name/.snap.name.
+    Historically used by sftp in error as the move to recursive bind mounts makes this
+    redundant and simpler.
+    :param share:
+    :param snap_name:
+    :param snap_qgroup:
+    :return:
+    """
     pool_device = get_device_path(share.pool.disk_set.attached().first().target_name)
     share_path = share.mnt_pt
     rel_snap_path = f".snapshots/{share.name}/{snap_name}"
-    snap_path = f"{share.pool.mnt_pt}/{rel_snap_path}".replace("//", "/")
-    if snap_mnt is None:
-        snap_mnt = f"{share_path}/.{snap_name}"
+    snap_path = f"{share.pool.mnt_pt}/{rel_snap_path}"  # .replace("//", "/") should be redundant.
+    snap_mnt = f"{share_path}/.{snap_name}"
     if is_mounted(snap_mnt):
-        return
+        return None
     mount_share(share, share_path)
-    if is_subvol(snap_path):
+    if is_subvol(snap_path):  # i.e. pool.mnt/.snapshots/share.name/snap.name
         create_tmp_dir(snap_mnt)
         # snap_qgroup = "0/subvolid" use for subvol reference as more
         # flexible than "subvol=rel_snap_path" (prior method).

@@ -34,6 +34,8 @@ LDD = "/usr/bin/ldd"
 
 SYSTEMCTL = "/usr/bin/systemctl"
 
+FINDMNT = "/usr/bin/findmnt"
+
 # Works in Leap 15.4 (systemd-249.16-150400.8.28.3) and Tumbleweed (systemd-253.4-2.1)
 UDEVADM = "/usr/bin/udevadm"
 SHUTDOWN = "/sbin/shutdown"
