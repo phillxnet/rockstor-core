@@ -623,18 +623,8 @@ def main():
     run_command(DJANGO_MIGRATE_CMD + ["storageadmin"], log=True)
     run_command(DJANGO_MIGRATE_SMART_MANAGER_CMD, log=True)
 
-    o, e, rc = run_command(
-        [DJANGO, "showmigrations", "--list", "oauth2_provider"], log=True
-    )
-    logger.info(f"Prior migrations for oauth2_provider are: {o}")
-
     # Run all migrations for oauth2_provider
     run_command(DJANGO_MIGRATE_CMD + ["oauth2_provider"], log=True)
-
-    o, e, rc = run_command(
-        [DJANGO, "showmigrations", "--list", "oauth2_provider"], log=True
-    )
-    logger.info(f"Post migrations for oauth2_provider are: {o}")
 
     logger.info("DB Migrations Done")
 
