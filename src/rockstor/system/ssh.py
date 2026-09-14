@@ -241,10 +241,6 @@ def sftp_mount(share, mnt_prefix, sftp_mnt_prefix, mnt_map, editable="rw"):
     :param editable: "rw" or "ro" to indicate required mount/remount.
     :return:
     """
-    logger.info(
-        f" ***DEV: sftp_mount(share_object={share.name}, mnt_prefix={mnt_prefix}, sftp_mnt_prefix={sftp_mnt_prefix}, mnt_map={mnt_map}, editable={editable})"
-    )
-    #  don't mount if already mounted
     sftp_mnt_pt = f"{sftp_mnt_prefix}{share.owner}/{share.name}"
     share_mnt_pt = f"{mnt_prefix}{share.name}"
     if share.name in mnt_map:  # If Share already mounted:
@@ -263,7 +259,7 @@ def sftp_mount(share, mnt_prefix, sftp_mnt_prefix, mnt_map, editable="rw"):
     else:  # Fresh chroot bind mount
         run_command([MKDIR, "-p", sftp_mnt_pt])
         # TODO: Better to initially mounting ro, then rw if editable instructs this way.
-        run_command([MOUNT, "--bind", share_mnt_pt, sftp_mnt_pt])
+        run_command([MOUNT, "--rbind", share_mnt_pt, sftp_mnt_pt])
         if editable == "ro":
             run_command(
                 [
