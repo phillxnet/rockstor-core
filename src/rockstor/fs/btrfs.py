@@ -851,7 +851,7 @@ def umount_root(root_pool_mnt):
             for l in ce.err:
                 l = l.strip()
                 if re.search(r"not mounted\.$", l) is not None:
-                    return  # Here we skip the mount point removal!!
+                    return  # Here we inadvertently skip the mount point removal!!
             raise ce
     for i in range(20):
         if not is_mounted(root_pool_mnt):

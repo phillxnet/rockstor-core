@@ -28,7 +28,7 @@ from pathlib import Path
 import distro
 
 from fs.btrfs import umount_root
-from settings import CONFROOT
+from settings import CONFROOT, SFTP_MNT_ROOT
 from system.osi import run_command, get_libs, is_mounted
 from system.constants import (
     MKDIR,
@@ -273,30 +273,17 @@ def sftp_mount(share, mnt_prefix, sftp_mnt_prefix, mnt_map, editable="rw"):
     return None
 
 
-def remove_sftp_bindmounts(
-    share_name: str, snap_name_list: list[str], chroot_path: str
-):
+def remove_sftp_share_bindmount(share_name: str, share_owner: str):
     """
-    Unmount SFTP bind mounts associated with each contained share.owner's chroot_path.
-    :param share_name: A SFTP Share.name to unmount from within the given chroot_path.
-    :param snap_name_list: List of visible snapshot.names to unmount from within the
-    chroot_path mounted share.
-    :param chroot_path:
+    Unmount a SFTP Share bind mount from within the share.owner's chroot_path.
+    :param share_name: Share.name to unmount from within a given users SFTP chroot.
+    :param share_owner: Required to establish the chroot path of the given share.
     """
-    # TODO: We likely also need to run this in the background as it may be log running.
-    # We do a lot of repeat calls to is_mounted here.
-    # Better to grab a dictionary of all mounts and reference it locally.
+    chroot_path = f"{SFTP_MNT_ROOT}{share_owner}/"
     sftp_export_path = f"{chroot_path}{share_name}"
-    if is_mounted(sftp_export_path):  # SFTP in-chroot bind-mount.
-        for visible_snap_name in snap_name_list:
-            # E.g. "mnt3/share.owner/share.name/.visible_share_snapshot_name
-            if is_mounted(f"{sftp_export_path}/.{visible_snap_name}"):
-                # TODO: We need a lazy unmount here and a possible re-try.
-                #  See nfs4_mount_teardown() in system/nfs_util.py
-                umount_root(f"{sftp_export_path}/.{visible_snap_name}")
+    if is_mounted(sftp_export_path):  # SFTP exported Share in-chroot bind-mount.
         umount_root(sftp_export_path)
-        if os.path.isdir(sftp_export_path):
-            shutil.rmtree(sftp_export_path)
+    return None
 
 
 def rsync_for_sftp(chroot_loc: str | Path):

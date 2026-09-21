@@ -29,7 +29,7 @@ from settings import (
 )
 from smart_manager.models import TaskDefinition
 from storageadmin.serializers import PoolInfoSerializer
-from storageadmin.models import Disk, Pool, Share, PoolBalance
+from storageadmin.models import Disk, Pool, Share, PoolBalance, Snapshot
 from fs.btrfs import (
     add_pool,
     resize_pool_cmd,
@@ -57,6 +57,8 @@ import rest_framework_custom as rfc
 import json
 
 import logging
+
+from system.ssh import remove_sftp_share_bindmount
 
 logger = logging.getLogger(__name__)
 
@@ -786,6 +788,9 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                         taskdef.delete()
             share_name_list = []
             nfs_exports_list = []
+            # Share.name indexed dictionary of per Share visible (mounted) snapshots.
+            visible_snap_lists = {str: list[str]}
+            sftp_exports_list = {}
             if Share.objects.filter(pool=pool).exists():
                 if not force:
                     e_msg = (
@@ -809,8 +814,25 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                 logger.info(f"- Pool ({pool.name}) mount point {pool.mnt_pt}.")
                 for so in Share.objects.filter(pool=pool):
                     share_name_list.append(so.name)
+                    # VISIBLE SNAPSHOTS
+                    # User visible (in-share) snapshot mounts; for SAMBA, SFTP, NFS.
+                    for snap in Snapshot.objects.filter(share=so, uvisible=True):
+                        if so.name in visible_snap_lists:
+                            visible_snap_lists[so.name].append(snap.name)
+                        else:
+                            visible_snap_lists[so.name] = [snap.name]
+                    logger.info(f"-- Share {so.name} has Visible snapshots: {visible_snap_lists[so.name]}")
+                    # SAMBA EXPORTS
+                    # DB entries are auto removed via SambaShare
+                    # model.OneToOneField("Share", related_name="sambashare", on_delete=models.CASCADE)
+                    # See remove_smb_export(share_name_list) later in this transaction.
+                    # SFTP EXPORTS
+                    # As per SAMBA exports, DB entries auto removed via Sftp
+                    # model.OneToOneField("Share", on_delete=models.CASCADE)
+                    # See
+
                     # NFS EXPORTS
-                    # Unlike Samba & SFTP exports, NFS exports don't get auto-deleted
+                    # Unlike Samba & SFTP exports, NFS DB exports don't get auto-deleted
                     # on pool.delete - via Share.ForeignKey to host Pool.
                     # They just lose their Share reference - so itteratively remove all
                     # linked export_groups before removing all related export_sets.
@@ -843,6 +865,7 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                         f"-- Unmounting subvol ({so.name}) mount point {so.mnt_pt}."
                     )
                     umount_root(so.mnt_pt)
+            # TODO: Backgroup this Pool wide unmount
             logger.info(f"- Unmounting Pool ({pool.name}) mount point {pool.mnt_pt}.")
             umount_root(pool.mnt_pt)
             logger.info(
@@ -850,6 +873,8 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
             )
             pool.delete()
             # We may need to update disk state here.
+            # TODO: Cycle through Share.name indexed visible_snap_lists to unmount,
+            #  prior to then being able to unmount the Share itself.
             if share_name_list:
                 logger.debug(f"Share names affected: {share_name_list}.")
                 # Our SambaShare.delete() override to update smb.conf is bypassed
@@ -871,6 +896,10 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                     # TODO: the following can be long running so do in background task.
                     nfs4_mount_teardown(nfs_exports_list)
                     # TODO: Background NFS service restart
+                # TODO: Remove all affected, by share unmount, SFTP exports.
+                # sftp_config_updated: bool = remove_sftp_export(share_name_list)
+                # for share_name in sftp_exports_list:
+                #         remove_sftp_bindmounts(share_name, share_owner)
             return Response()
 
 

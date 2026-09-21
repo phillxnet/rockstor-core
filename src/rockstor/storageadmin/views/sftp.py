@@ -34,7 +34,7 @@ from system.ssh import (
     sftp_mount_map,
     sftp_mount,
     rsync_for_sftp,
-    remove_sftp_bindmounts,
+    remove_sftp_share_bindmount,
 )
 
 logger = logging.getLogger(__name__)
@@ -108,12 +108,10 @@ class SFTPDetailView(rfc.GenericView):
             except:
                 e_msg = f"SFTP config for the id ({id}) does not exist."
                 handle_exception(Exception(e_msg), request)
-
-            chroot_path = f"{SFTP_MNT_ROOT}{sftpo.share.owner}/"
-            visible_snap_names = []
-            for snap in Snapshot.objects.filter(share=sftpo.share, uvisible=True):
-                visible_snap_names.append(snap.name)
-            remove_sftp_bindmounts(sftpo.share.name, visible_snap_names, chroot_path)
+            # Visible snapshots within this bind mount are inherited, via recursive
+            # bind mount (rbind), from their canonical mount for all exports within
+            # the /mnt2/Share/.snap-name mnt point that is expected to already exist.
+            remove_sftp_share_bindmount(sftpo.share.name, sftpo.share.owner)
             sftpo.delete()
             input_map = {}
             for so in SFTP.objects.all():
