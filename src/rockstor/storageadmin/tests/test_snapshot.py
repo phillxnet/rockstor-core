@@ -77,7 +77,7 @@ class SnapshotTests(APITestMixin):
         cls.mock_mount_snap = cls.patch_mount_snap.start()
         cls.mock_mount_snap.return_value = "out", "err", 0
 
-        cls.patch_umount_root = patch("storageadmin.views.snapshot.umount_root")
+        cls.patch_umount_root = patch("storageadmin.views.snapshot.mount_teardown")
         cls.mock_umount_root = cls.patch_umount_root.start()
         cls.mock_umount_root.return_value = "out", "err", 0
 

@@ -87,7 +87,7 @@ class PoolTests(APITestMixin):
         cls.mock_balance_pool.return_value = ["true"]
 
         # delete mocks
-        cls.patch_umount_root = patch("storageadmin.views.pool.umount_root")
+        cls.patch_umount_root = patch("storageadmin.views.pool.mount_teardown")
         cls.mock_umount_root = cls.patch_umount_root.start()
         cls.mock_umount_root.return_value = True
 
