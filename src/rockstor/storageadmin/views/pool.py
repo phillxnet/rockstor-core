@@ -34,7 +34,7 @@ from fs.btrfs import (
     add_pool,
     resize_pool_cmd,
     balance_pool_cmd,
-    umount_root,
+    mount_teardown,
     btrfs_uuid,
     mount_root,
     start_balance,
@@ -864,10 +864,10 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                     logger.info(
                         f"-- Unmounting subvol ({so.name}) mount point {so.mnt_pt}."
                     )
-                    umount_root(so.mnt_pt)
+                    mount_teardown(so.mnt_pt)
             # TODO: Backgroup this Pool wide unmount
             logger.info(f"- Unmounting Pool ({pool.name}) mount point {pool.mnt_pt}.")
-            umount_root(pool.mnt_pt)
+            mount_teardown(pool.mnt_pt)
             logger.info(
                 f"Removing Pool ({pool.name}) management and associated configuration. "
             )
@@ -897,6 +897,7 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                     nfs4_mount_teardown(nfs_exports_list)
                     # TODO: Background NFS service restart
                 # TODO: Remove all affected, by share unmount, SFTP exports.
+                #  i.e.: "/mnt3/sftp-user1/sftp-share1"
                 # sftp_config_updated: bool = remove_sftp_export(share_name_list)
                 # for share_name in sftp_exports_list:
                 #         remove_sftp_bindmounts(share_name, share_owner)

@@ -43,6 +43,8 @@ from system.constants import (
     SHUTDOWN,
     LDD,
     FINDMNT,
+    UMOUNT,
+    UMOUNT_ERR_WHITELIST,
 )
 
 logger = logging.getLogger(__name__)
@@ -504,13 +506,11 @@ def kernel_info():
     return uname[2]
 
 
-def create_tmp_dir(dirname):
-    # TODO: suggest name change to create_dir
+def create_dir(dirname):
     return run_command([MKDIR, "-p", dirname])
 
 
-def rm_tmp_dir(dirname):
-    # TODO: suggest name change to remove_dir
+def remove_dir(dirname):
     return run_command([RMDIR, dirname])
 
 
@@ -801,6 +801,46 @@ def remount(mnt_pt, mnt_options):
     if is_mounted(mnt_pt):
         run_command([MOUNT, "-o", f"remount,{mnt_options}", mnt_pt])
     return True
+
+
+def lazy_unmount(mnt_pt, wait: int = 2) -> bool:
+    """
+    Lazy un-mount wrapper: "umount -line mnt_pt" with race detection.
+    Uses repeat calls to findmnt, within 'wait' secs, to confirm mount no longer exists.
+    Expected runtime limited to 'wait' seconds.
+    N.B. When used with SFTP exports, in-chroot recursive bind mounts, we end-up
+    unmounting all visible snapshots from within the source Share also!
+    :param mnt_pt: mount point.
+    :param wait: second to wait for lazy mount to complete successfully.
+    :return: 'True' on confirmed unmounted, 'False' otherwise or on 'wait' secs exceeded.
+    """
+    if not os.path.exists(mnt_pt):
+        # No path means nothing can be mounted here.
+        return True
+    if not is_mounted(mnt_pt):
+        return True
+    start_time = time.time()
+    try:
+        # -l Lazy: detach fs now, clean-up referendes to the fs once no longer busy.
+        out, err, rc = run_command([UMOUNT, "-l", mnt_pt], log=True)
+    except CommandException as ce:
+        # Catch race between is_mounted() & os.path:exists() returning `True`
+        if ce.rc == 32:  # Not mounted, or specified path vanished.
+            for line in ce.err:
+                line = line.strip()
+                if any(line.endswith(f"{error}") for error in UMOUNT_ERR_WHITELIST):
+                    return True
+        raise ce
+    sleep_period: float = 0.2
+    while (time.time() - start_time) < wait:
+        # is_mounted() timed at 0.003 seconds; while findmnt_bool() at 0.02 seconds.
+        # Trusting findmnt as /proc/mounts may be disconnected by lazy umount.
+        if not findmnt_bool(mnt_pt):
+            return True
+        logger.info(f"Lazy unmount check waiting for {sleep_period} seconds.")
+        time.sleep(sleep_period)
+    logger.info("Lazy unmount check timed out - returning False")
+    return False
 
 
 def wipe_disk(disk_byid):

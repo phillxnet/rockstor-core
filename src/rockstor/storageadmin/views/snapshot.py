@@ -31,7 +31,7 @@ from fs.btrfs import (
     share_id,
     volume_usage,
     remove_snap_subvol,
-    umount_root,
+    mount_teardown,
     mount_snap,
     qgroup_assign,
 )
@@ -106,8 +106,8 @@ class SnapshotView(NFSExportMixin, rfc.GenericView):
                 except Exception as e:
                     logger.exception(e)
                 finally:
-                    umount_root(export_pt)
-                    umount_root(snap_mnt_pt)
+                    mount_teardown(export_pt)
+                    mount_teardown(snap_mnt_pt)
         exports = self.create_nfs_export_input(cur_exports)
         adv_entries = [x.export_str for x in AdvancedNFSExport.objects.all()]
         exports_d = self.create_adv_nfs_export_input(adv_entries, self.request)

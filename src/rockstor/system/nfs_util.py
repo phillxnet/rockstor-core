@@ -17,11 +17,17 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import shutil
-import time
 from tempfile import mkstemp
 
 from system.constants import MKDIR, MOUNT, UMOUNT, RMDIR, NFS_CONFIG, NFS_EXPORT_ROOT
-from system.osi import run_command, is_mounted, toggle_path_rw
+from system.osi import (
+    run_command,
+    is_mounted,
+    toggle_path_rw,
+    lazy_unmount,
+    findmnt_bool,
+    logger,
+)
 
 EXPORTFS = "/usr/sbin/exportfs"
 
@@ -39,36 +45,32 @@ I.e.:
 
 def nfs4_mount_teardown(export_paths: list[str]):
     """
-    If the passed path is mounted:
-    1. Do a lazy unmount and check every second for 10 seconds before force unmounting.
-    2. Ensure mount point dir is read-write.
-    3. Remove mount point dir.
+    1. Attempt a lazy unmount for the default period.
+    2. If the above fails do a force unmount.
+    2. Ensure mount point dir is read-write. & double check for existing mounts.
+    3. Finally check for existence & no mounts before removing the mount point dir.
     :param export_paths: Bind mount points for NFS exports e.g.: `/export/nfs_export1`
     N.B. Moved from system.osi.
     """
     # N.B. candidate for parallelisation.
+    #  Consider using fs.btrfs.mount_teardown()
     for export_path in export_paths:
         if not export_path.startswith(NFS_EXPORT_ROOT):
             continue
-        if is_mounted(export_path):
-            # -l Lazy: detach fs now, clean-up referendes to the fs once no longer busy.
-            run_command([UMOUNT, "-l", export_path], log=True)
-            # Re-test mount status for 10 seconds, once unmounted make mount point dir rw.
-            unmounted: bool = False
-            for i in range(10):
-                if not is_mounted(export_path):
-                    unmounted = True
-                    break
-                    # return run_command([RMDIR, export_path])
-                time.sleep(1)
-            if not unmounted:  # still, then force unmount.
-                run_command([UMOUNT, "--force", export_path], log=True)
-            # Ensure mount point is not read-only so we can clean up.
+        unmounted: bool = lazy_unmount(export_path)
+        if not unmounted:  # still; then force unmount.
+            # Can be long-running!
+            logger.info("Executing forced unmount - review lazy_unmount() timings.")
+            run_command([UMOUNT, "--force", export_path], log=True)
+        # Check mount point exists again before attempting to remove it,
+        # and double check there are no remaining mounts:
+        if os.path.exists(export_path) and not findmnt_bool(export_path):
+            # Ensure mount point is not read-only so we can remove the mnt directory.
             toggle_path_rw(export_path, rw=True)
-        # Check mount point exists before attempting to remove it.
-        if os.path.exists(export_path):
             run_command([RMDIR, export_path])
-    return True
+        else:
+            logger.error(f"NFS mount point {export_path} remains.")
+    return None
 
 
 def bind_mount(mnt_pt, export_pt):

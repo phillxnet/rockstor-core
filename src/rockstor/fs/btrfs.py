@@ -18,14 +18,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import collections
 import json
 import re
-import time
 import os
 
 # N.B. Cannot import Pool & Share for type-hints as then circular:
 # Pool and Share models use these btrfs procedures via properties etc.
 from system.osi import (
     run_command,
-    create_tmp_dir,
+    create_dir,
     is_share_mounted,
     is_mounted,
     get_dev_byid_name,
@@ -33,6 +32,8 @@ from system.osi import (
     toggle_path_rw,
     get_device_path,
     dev_mount_point,
+    lazy_unmount,
+    findmnt_bool,
 )
 from system.exceptions import CommandException
 from system.constants import MOUNT, UMOUNT, RMDIR, DEFAULT_MNT_DIR
@@ -773,7 +774,7 @@ def mount_root(pool):
     if pool.is_mounted:
         return root_pool_mnt
     # Creates a directory to act as the mount point.
-    create_tmp_dir(root_pool_mnt)
+    create_dir(root_pool_mnt)
     toggle_path_rw(root_pool_mnt, rw=False)
     mnt_device = f"/dev/disk/by-label/{pool.name}"
     mnt_cmd = [MOUNT, mnt_device, root_pool_mnt]
@@ -829,49 +830,33 @@ def mount_root(pool):
     )
 
 
-def umount_root(root_pool_mnt):
+def mount_teardown(mnt_pt) -> bool:
     """
-    Perform a lazy un-mount "umount -l root_pool_mnt".
-    if the passed root_pool_mnt exists, returning None if it doesn't.
-    Catch "... not mounted ..." exceptions and returning None also in that case.
-    Once the lazy umount has executed, expected to be imidate, we retest, with sleep,
-    for an ongoing mount 20 times. If during this period a mount is no longer found, the
-    root_pool_mnt directory is then removed via "rmdir root_pool_mnt".
-    A --force unmount is then performed if the above fails.
-
-    :param root_pool_mnt:
-    :return:
+    1. Attempt a lazy unmount for a non-default period.
+    2. If the above fails do a force unmount.
+    3. Do a force unmount.
+    4. Recheck mnt_pt's existence and double check no mounts exist.
+    5. Ensure mnt_pt directory is read-write.
+    6. Remove mnt_pt directory, i.e. `rmdir mnt_pt`.
+    :param mnt_pt: Pool or Share (both are subvols) mount point.
+    :return: True if completion, False if a problem was encountered.
     """
-    if not os.path.exists(root_pool_mnt):
-        return
-    try:
-        o, e, rc = run_command([UMOUNT, "-l", root_pool_mnt])
-    except CommandException as ce:
-        if ce.rc == 32:
-            for l in ce.err:
-                l = l.strip()
-                if re.search(r"not mounted\.$", l) is not None:
-                    return  # Here we inadvertently skip the mount point removal!!
-            raise ce
-    for i in range(20):
-        if not is_mounted(root_pool_mnt):
-            toggle_path_rw(root_pool_mnt, rw=True)
-            # out, err, rc = run_command(["lsof", "+D", root_pool_mnt], log=True, throw=False)
-            # logger.info(f"lsof +d {root_pool_mnt} returned out={out}, err={err}, rc={rc}")
-            # above returns rc=1 if a file is still open.
-            # TODO: Look to findmnt to assist with assessing if lazy umount is done yet.
-            #  findmnt -o TARGET -n root_pool_mnt
-            # returns (rc=0) root_pool_mnt
-            run_command([RMDIR, root_pool_mnt])
-            # rc = 1. stdout = [''].
-            # stderr = ["rmdir: failed to remove '/mnt3/chroot/share/.snap':
-            #  Device or resource busy", '']
-            return
-        time.sleep(2)
-    run_command([UMOUNT, "-f", root_pool_mnt])
-    toggle_path_rw(root_pool_mnt, rw=True)
-    run_command([RMDIR, root_pool_mnt])
-    return
+    if not os.path.exists(mnt_pt):
+        return True
+    unmounted: bool = lazy_unmount(mnt_pt, wait=4)
+    if not unmounted:
+        # Can be long-running!
+        logger.info("Executing forced unmount - review lazy_unmount() timings.")
+        run_command([UMOUNT, "--force", mnt_pt], log=True)
+    # Check mount point exists again before attempting to remove it,
+    # and double check there are no remaining mounts:
+    if os.path.exists(mnt_pt) and not findmnt_bool(mnt_pt):
+        # Ensure mount point is not read-only so we can remove the mnt directory.
+        toggle_path_rw(mnt_pt, rw=True)
+        run_command([RMDIR, mnt_pt])
+    else:
+        logger.error(f"Mount point {mnt_pt} removal failed, skipping rmdir.")
+    return unmounted
 
 
 def is_subvol(mnt_pt):
@@ -934,7 +919,7 @@ def mount_share(share, mnt_pt):
     # share.qgroup = "0/subvolid" use for subvol reference as more
     # flexible than "subvol=share.subvol_name" (prior method).
     subvol_str = f"subvolid={qgroup[2:]}"
-    create_tmp_dir(mnt_pt)
+    create_dir(mnt_pt)
     toggle_path_rw(mnt_pt, rw=False)
     mnt_cmd = [MOUNT, "-t", "btrfs", "-o", subvol_str, pool_device, mnt_pt]
     return run_command(mnt_cmd, log=True)
@@ -961,7 +946,7 @@ def mount_snap(share, snap_name, snap_qgroup):
         return None
     mount_share(share, share_path)
     if is_subvol(snap_path):  # i.e. pool.mnt/.snapshots/share.name/snap.name
-        create_tmp_dir(snap_mnt)
+        create_dir(snap_mnt)
         # snap_qgroup = "0/subvolid" use for subvol reference as more
         # flexible than "subvol=rel_snap_path" (prior method).
         subvol_str = f"subvolid={snap_qgroup[2:]}"
@@ -1222,7 +1207,7 @@ def remove_share_subvol(share, force: bool = False):
     pool_mnt = share.pool.mnt_pt
     if share.is_mounted:
         # N.B. we only unmount rockstor managed share points: "/mnt2/share-name".
-        umount_root(share.mnt_pt)
+        mount_teardown(share.mnt_pt)
     subvol_mnt_pt = pool_mnt + "/" + share.name
     if not is_subvol(subvol_mnt_pt):
         return None
@@ -1259,7 +1244,7 @@ def remove_snap_subvol(snap):
     pool_mnt = snap.share.pool.mnt_pt
     snap_path = f"{pool_mnt}/.snapshots/{snap.share.name}/{snap.name}"
     if is_mounted(snap_path):
-        umount_root(snap_path)
+        mount_teardown(snap_path)
     if is_subvol(snap_path):
         qgroup_remove(snap.qgroup, snap.share.pqgroup, snap_path)
         run_command([BTRFS, "subvolume", "delete", snap_path], log=True)
@@ -1310,7 +1295,7 @@ def add_snap(share, snap_name, writable):
     """
     share_full_path = share.mnt_pt
     snap_dir = f"{share.pool.mnt_pt}/.snapshots/{share.subvol_name}".replace("//", "/")
-    create_tmp_dir(snap_dir)
+    create_dir(snap_dir)
     snap_full_path = f"{snap_dir}/{snap_name}"
     return add_snap_helper(share_full_path, snap_full_path, writable)
 

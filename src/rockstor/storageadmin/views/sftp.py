@@ -113,9 +113,10 @@ class SFTPDetailView(rfc.GenericView):
             # the /mnt2/Share/.snap-name mnt point that is expected to already exist.
             remove_sftp_share_bindmount(sftpo.share.name, sftpo.share.owner)
             sftpo.delete()
-            input_map = {}
+            # Build map of all remaining SFTP exporting users, with chroot path values.
+            user_chroot_map = {}
             for so in SFTP.objects.all():
                 if so.id != sftpo.id:
-                    input_map[so.share.owner] = f"{SFTP_MNT_ROOT}{so.share.owner}"
-            update_sftp_user_share_config(input_map)
+                    user_chroot_map[so.share.owner] = f"{SFTP_MNT_ROOT}{so.share.owner}"
+            update_sftp_user_share_config(user_chroot_map)
             return Response()

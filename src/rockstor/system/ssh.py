@@ -27,9 +27,8 @@ from pathlib import Path
 
 import distro
 
-from fs.btrfs import umount_root
 from settings import CONFROOT, SFTP_MNT_ROOT
-from system.osi import run_command, get_libs, is_mounted
+from system.osi import run_command, get_libs, lazy_unmount
 from system.constants import (
     MKDIR,
     MOUNT,
@@ -129,9 +128,12 @@ def init_sftp_config(sshd_config=None):
 def update_sftp_user_share_config(input_map):
     """
     Receives sftp-related customization settings and writes them to SSHD_CONFIG files.
+    Performs a sshd reload, or on exception a restart there-after.
     :param input_map: dictionary of chroot directory values keyed by username.
+      e.g. {'sftp-user1': '/mnt3/sftp-user1'}
     :return:
     """
+    logger.info(f"update_sftp_user_share_config({input_map}) called.")
     fo, npath = mkstemp()
     sshd_conf = SshdConfig()
     # TODO: Split out AllowUsers into SSHD_CONFIG[distro.id()].AllowUsers
@@ -275,15 +277,15 @@ def sftp_mount(share, mnt_prefix, sftp_mnt_prefix, mnt_map, editable="rw"):
 
 def remove_sftp_share_bindmount(share_name: str, share_owner: str):
     """
-    Unmount a SFTP Share bind mount from within the share.owner's chroot_path.
+    Unmount a SFTP Share recursive bind mount within the share.owner's chroot_path.
     :param share_name: Share.name to unmount from within a given users SFTP chroot.
     :param share_owner: Required to establish the chroot path of the given share.
     """
     chroot_path = f"{SFTP_MNT_ROOT}{share_owner}/"
+    # SFTP exported Share in-chroot bind-mount.
     sftp_export_path = f"{chroot_path}{share_name}"
-    if is_mounted(sftp_export_path):  # SFTP exported Share in-chroot bind-mount.
-        umount_root(sftp_export_path)
-    return None
+    result:bool = lazy_unmount(sftp_export_path)
+    return result
 
 
 def rsync_for_sftp(chroot_loc: str | Path):

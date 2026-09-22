@@ -26,6 +26,9 @@ DEFAULT_MNT_DIR = "/mnt2/"
 MOUNT = "/usr/bin/mount"
 UMOUNT = "/usr/bin/umount"
 
+# Error line endings to count as no mount:
+UMOUNT_ERR_WHITELIST: list[str] = [r"not mounted.", "no mount point specified."]
+
 CHOWN = "/usr/bin/chown"
 CHMOD = "/usr/bin/chmod"
 
