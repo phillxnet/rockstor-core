@@ -125,7 +125,7 @@ def init_sftp_config(sshd_config=None):
     return sshd_restart
 
 
-def update_sftp_user_share_config(input_map):
+def update_sftp_user_config(input_map):
     """
     Receives sftp-related customization settings and writes them to SSHD_CONFIG files.
     Performs a sshd reload, or on exception a restart there-after.
@@ -133,7 +133,6 @@ def update_sftp_user_share_config(input_map):
       e.g. {'sftp-user1': '/mnt3/sftp-user1'}
     :return:
     """
-    logger.info(f"update_sftp_user_share_config({input_map}) called.")
     fo, npath = mkstemp()
     sshd_conf = SshdConfig()
     # TODO: Split out AllowUsers into SSHD_CONFIG[distro.id()].AllowUsers

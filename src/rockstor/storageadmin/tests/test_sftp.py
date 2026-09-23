@@ -73,17 +73,9 @@ class SFTPTests(APITestMixin):
         cls.mock_sftp_mount.return_value = True
 
         # Avoid low-level chmod/rsync/sftp_user filesystem/sshd prep by mocking.
-        cls.patch_rsync_for_sftp = patch("storageadmin.views.sftp.rsync_for_sftp")
+        cls.patch_rsync_for_sftp = patch("storageadmin.views.sftp.user_chroot_setup")
         cls.mock_rsync_for_sftp = cls.patch_rsync_for_sftp.start()
         cls.mock_rsync_for_sftp.return_value = True
-
-        cls.patch_update_sftp_user_share_config = patch(
-            "storageadmin.views.sftp.update_sftp_user_share_config"
-        )
-        cls.mock_update_sftp_user_share_config = (
-            cls.patch_update_sftp_user_share_config.start()
-        )
-        cls.mock_update_sftp_user_share_config.return_value = True
 
     @classmethod
     def tearDownClass(cls):

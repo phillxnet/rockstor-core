@@ -25,15 +25,14 @@ from fs.btrfs import mount_share
 from settings import SFTP_MNT_ROOT, MNT_PT
 from storageadmin.views.share_helpers import (
     validate_share,
+    user_chroot_setup,
 )
-from storageadmin.models import SFTP, Snapshot
+from storageadmin.models import SFTP
 from storageadmin.serializers import SFTPSerializer
 from storageadmin.util import handle_exception
 from system.ssh import (
-    update_sftp_user_share_config,
     sftp_mount_map,
     sftp_mount,
-    rsync_for_sftp,
     remove_sftp_share_bindmount,
 )
 
@@ -52,14 +51,16 @@ class SFTPListView(rfc.GenericView):
             if "shares" not in request.data:
                 e_msg = "Must provide share names."
                 handle_exception(Exception(e_msg), request)
-            shares = [validate_share(s, request) for s in request.data["shares"]]
+            share_obj_list = [
+                validate_share(s, request) for s in request.data["shares"]
+            ]
             editable = "rw"
             if "read_only" in request.data and request.data["read_only"] is True:
                 editable = "ro"
 
             mnt_map = sftp_mount_map(SFTP_MNT_ROOT)
             user_chroot_map = {}
-            for share in shares:
+            for share in share_obj_list:
                 if SFTP.objects.filter(share=share).exists():
                     e_msg = f"Share ({share.name}) is already exported via SFTP."
                     handle_exception(Exception(e_msg), request)
@@ -70,7 +71,7 @@ class SFTPListView(rfc.GenericView):
                         "root ownership."
                     )
                     handle_exception(Exception(e_msg), request)
-            for share in shares:
+            for share in share_obj_list:
                 sftpo = SFTP(share=share, editable=editable)
                 sftpo.save()
                 #  mount if not already mounted
@@ -79,18 +80,7 @@ class SFTPListView(rfc.GenericView):
                 sftp_mount(share, MNT_PT, SFTP_MNT_ROOT, mnt_map, editable)
                 # Above sftp_mount() is now a recursive bind mount, and so also mirrors
                 # changes in the Share's submounts (user visible snapshots).
-                # sftp_snap_toggle(share)
-
-                chroot_loc = f"{SFTP_MNT_ROOT}{share.owner}"
-                rsync_for_sftp(chroot_loc)
-                user_chroot_map[share.owner] = chroot_loc
-            # TODO: Abstract to share_helpers.py passing
-            for sftpo in SFTP.objects.all():
-                if sftpo.share not in shares:
-                    user_chroot_map[sftpo.share.owner] = (
-                        f"{SFTP_MNT_ROOT}{sftpo.share.owner}"
-                    )
-            update_sftp_user_share_config(user_chroot_map)
+            user_chroot_setup()
             return Response()
 
 
@@ -116,11 +106,5 @@ class SFTPDetailView(rfc.GenericView):
             # the /mnt2/Share/.snap-name mnt point that is expected to already exist.
             remove_sftp_share_bindmount(sftpo.share.name, sftpo.share.owner)
             sftpo.delete()
-            # TODO: Abstract to share_helpers.py passing
-            # Build map of all remaining SFTP exporting users, with chroot path values.
-            user_chroot_map = {}
-            for so in SFTP.objects.all():
-                if so.id != sftpo.id:
-                    user_chroot_map[so.share.owner] = f"{SFTP_MNT_ROOT}{so.share.owner}"
-            update_sftp_user_share_config(user_chroot_map)
+            user_chroot_setup()
             return Response()

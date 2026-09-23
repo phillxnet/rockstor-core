@@ -20,8 +20,8 @@ from datetime import datetime, timezone
 from os import stat, stat_result
 from stat import S_IMODE
 
-from settings import MODEL_DEFS, MNT_PT
-from storageadmin.models import Share, Snapshot
+from settings import MODEL_DEFS, MNT_PT, SFTP_MNT_ROOT
+from storageadmin.models import Share, Snapshot, SFTP
 from smart_manager.models import ShareUsage
 from fs.btrfs import (
     mount_share,
@@ -39,6 +39,7 @@ from copy import deepcopy
 
 import logging
 
+from system.ssh import update_sftp_user_config, rsync_for_sftp
 from system.users import user_name, group_name
 
 logger = logging.getLogger(__name__)
@@ -279,6 +280,24 @@ def import_snapshots(share):
         else:
             update_shareusage_db(s, rusage, eusage, UPDATE_TS)
         so.save()
+
+
+def user_chroot_setup():
+    """
+    Establishes the required user chroots config for the SFTP exported Share owners.
+    """
+    user_chroot_map = {}
+    for sftp_export in SFTP.objects.all():
+        user_chroot_map[sftp_export.share.owner] = (
+            f"{SFTP_MNT_ROOT}{sftp_export.share.owner}"
+        )
+    # We currently bypass rsync capability via `ForceCommand internal-sftp`
+    for owner, chroot_path in user_chroot_map.items():
+        rsync_for_sftp(chroot_path)
+    update_sftp_user_config(user_chroot_map)
+    # TODO: Write and call a pruning procedure to remove redundant chroot trees;
+    #  i.e. for all users no longer owning a SFTP Share export.
+    return None
 
 
 def update_shareusage_db(subvol_name, rusage, eusage, new_entry=True):
