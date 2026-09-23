@@ -14,6 +14,7 @@ General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
+
 from rest_framework import status
 from unittest.mock import patch
 
@@ -63,9 +64,7 @@ class SFTPTests(APITestMixin):
 
         # we may want to mock system.ssh.remove_sftp_bindmounts
 
-        cls.patch_helper_mount_share = patch(
-            "storageadmin.views.sftp.helper_mount_share"
-        )
+        cls.patch_helper_mount_share = patch("storageadmin.views.sftp.mount_share")
         cls.mock_helper_mount_share = cls.patch_helper_mount_share.start()
         cls.mock_helper_mount_share.return_value = True
 

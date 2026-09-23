@@ -21,9 +21,9 @@ from django.db import transaction
 from rest_framework.response import Response
 
 import rest_framework_custom as rfc
+from fs.btrfs import mount_share
 from settings import SFTP_MNT_ROOT, MNT_PT
 from storageadmin.views.share_helpers import (
-    helper_mount_share,
     validate_share,
 )
 from storageadmin.models import SFTP, Snapshot
@@ -58,7 +58,7 @@ class SFTPListView(rfc.GenericView):
                 editable = "ro"
 
             mnt_map = sftp_mount_map(SFTP_MNT_ROOT)
-            input_map = {}
+            user_chroot_map = {}
             for share in shares:
                 if SFTP.objects.filter(share=share).exists():
                     e_msg = f"Share ({share.name}) is already exported via SFTP."
@@ -74,7 +74,7 @@ class SFTPListView(rfc.GenericView):
                 sftpo = SFTP(share=share, editable=editable)
                 sftpo.save()
                 #  mount if not already mounted
-                helper_mount_share(share)
+                mount_share(share, f"{MNT_PT}{share.name}")
                 #  bindmount if not already
                 sftp_mount(share, MNT_PT, SFTP_MNT_ROOT, mnt_map, editable)
                 # Above sftp_mount() is now a recursive bind mount, and so also mirrors
@@ -83,11 +83,14 @@ class SFTPListView(rfc.GenericView):
 
                 chroot_loc = f"{SFTP_MNT_ROOT}{share.owner}"
                 rsync_for_sftp(chroot_loc)
-                input_map[share.owner] = chroot_loc
+                user_chroot_map[share.owner] = chroot_loc
+            # TODO: Abstract to share_helpers.py passing
             for sftpo in SFTP.objects.all():
                 if sftpo.share not in shares:
-                    input_map[sftpo.share.owner] = f"{SFTP_MNT_ROOT}{sftpo.share.owner}"
-            update_sftp_user_share_config(input_map)
+                    user_chroot_map[sftpo.share.owner] = (
+                        f"{SFTP_MNT_ROOT}{sftpo.share.owner}"
+                    )
+            update_sftp_user_share_config(user_chroot_map)
             return Response()
 
 
@@ -113,6 +116,7 @@ class SFTPDetailView(rfc.GenericView):
             # the /mnt2/Share/.snap-name mnt point that is expected to already exist.
             remove_sftp_share_bindmount(sftpo.share.name, sftpo.share.owner)
             sftpo.delete()
+            # TODO: Abstract to share_helpers.py passing
             # Build map of all remaining SFTP exporting users, with chroot path values.
             user_chroot_map = {}
             for so in SFTP.objects.all():

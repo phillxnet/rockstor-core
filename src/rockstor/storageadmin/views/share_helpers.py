@@ -14,14 +14,14 @@ General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
-import os.path
+
 import re
 from datetime import datetime, timezone
 from os import stat, stat_result
 from stat import S_IMODE
 
 from settings import MODEL_DEFS, MNT_PT
-from storageadmin.models import Share, Snapshot, SFTP
+from storageadmin.models import Share, Snapshot
 from smart_manager.models import ShareUsage
 from fs.btrfs import (
     mount_share,
@@ -48,13 +48,6 @@ UPDATE_TS = False
 # The following model/db default setting is also used when quotas are disabled
 # or when a Read-only state prevents creation of a new pqgroup.
 PQGROUP_DEFAULT = MODEL_DEFS["pqgroup"]
-
-
-def helper_mount_share(share, mnt_pt=None):
-    if not share.is_mounted:
-        if mnt_pt is None:
-            mnt_pt = f"{MNT_PT}{share.name}"
-        mount_share(share, mnt_pt)
 
 
 def validate_share(sname, request):
