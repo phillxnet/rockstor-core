@@ -451,9 +451,9 @@ def degraded_pools_found():
 def get_pool_labels():
     """
     Wrapper around 'btrfs fi show --raw' to extract all Pool labels. Primarily intended
-    to avoid creating a new Pool when an unmanaged Pool already exists with the same
-    label. We use labels, rather than uuid, to uniquely identify managed Pools. In time
-    we must move to uuid as canonical for identifying Pools.
+    to avoid creating a new Pool when an un-imported/unmanaged Pool already exists with
+    the same label. We use labels, rather than uuid, to uniquely identify managed Pools.
+    In time we must move to uuid as canonical for identifying Pools.
     :return: List of all pool labels. E.g. ["rock-pool","none"]
     """
     cmd = [BTRFS, "fi", "show", "--raw"]

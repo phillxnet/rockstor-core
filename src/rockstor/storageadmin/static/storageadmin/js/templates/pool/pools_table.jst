@@ -123,7 +123,7 @@
                 {{/unless}}
             </td>
             <td>
-                <a id="delete_pool_{{this.id}}" data-id="{{this.id}}" data-action="delete" rel="tooltip" title="Delete pool management">
+                <a id="delete_pool_{{this.id}}" data-id="{{this.id}}" data-action="delete" rel="tooltip" title="Un-import pool">
                 <i class="glyphicon glyphicon-trash"></i></a>
             </td>
         </tr>
@@ -132,14 +132,14 @@
           <div class="modal-content">
            <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-            <h3 id="myModalLabel">Delete Pool management for <strong>{{this.name}}</strong></h3>
+            <h3 id="myModalLabel">Un-import the Pool named: <strong>{{this.name}}</strong></h3>
            </div>
            <div class="modal-body">
             <div class="messages"></div>
-            <h4><strong>Web-UI Configuration will be deleted</strong> for Tasks, Shares, & Snapshots; and their NFS / Samba / SFTP exports, Rock-ons, and replication.</h4>
+            <h4><strong>Configuration will be deleted</strong> for associated Tasks, Shares, Snapshots, NFS/Samba/SFTP exports, Rock-ons, and replication.</h4>
             <div class="alert alert-danger">
               Are you sure? DATA ACCESS WILL BE LOST!<br>
-              Creating a <a href="#config-backup" target="_blank">`Config Backup`</a> is recommended before proceeding.<br>
+              Creating a `Config Backup` (SYSTEM->Config Backups) is recommended before proceeding.<br>
               See online docs for limitations and procedures: <a href="https://rockstor.com/docs/interface/system/config_backup.html" target="_blank">Configuration Backup and Restore</a>.
             </div>
             <div class="alert alert-warning">Re-configuring affected systems will be required to re-establish Web-UI to OS consistency.</div>
