@@ -768,7 +768,7 @@ def findmnt_bool(mnt_pt: str) -> bool:
     # rc=1 when no mounts exist, or when the mnt_pt does not exist.
     if rc == 0:  # mount exists
         result = True
-    logger.info(f"  ***DEV: findmnt_bool({mnt_pt}) returned: {result}")
+    logger.debug(f"  ***DEV: findmnt_bool({mnt_pt}) returned: {result}")
     return result
 
 

@@ -19,6 +19,7 @@ import collections
 import json
 import re
 import os
+from typing import List
 
 # N.B. Cannot import Pool & Share for type-hints as then circular:
 # Pool and Share models use these btrfs procedures via properties etc.
@@ -274,6 +275,14 @@ PROFILE = {
         data_parity=2,
     ),
 }
+
+
+# Uses forward reference syntax to have recursive type hint.
+# https://peps.python.org/pep-0484/?ref=turingtaco.com#forward-references
+class UmountTreeNode:
+    def __init__(self, mnt_pt: str, subvols: List['UmountTreeNode'] = []):
+        self.mnt_pt = mnt_pt
+        self.subvols = subvols
 
 
 def add_pool(pool, disks):
@@ -833,11 +842,10 @@ def mount_root(pool):
 def mount_teardown(mnt_pt) -> bool:
     """
     1. Attempt a lazy unmount for a non-default period.
-    2. If the above fails do a force unmount.
-    3. Do a force unmount.
-    4. Recheck mnt_pt's existence and double check no mounts exist.
-    5. Ensure mnt_pt directory is read-write.
-    6. Remove mnt_pt directory, i.e. `rmdir mnt_pt`.
+    2. If the lazy unmount fails; do a force unmount.
+    3. Recheck mnt_pt's existence and double check no mounts exist.
+    4. Ensure mnt_pt directory is read-write.
+    5. Remove mnt_pt directory, i.e. `rmdir mnt_pt`.
     :param mnt_pt: Pool or Share (both are subvols) mount point.
     :return: True if completion, False if a problem was encountered.
     """
@@ -853,7 +861,7 @@ def mount_teardown(mnt_pt) -> bool:
     if os.path.exists(mnt_pt) and not findmnt_bool(mnt_pt):
         # Ensure mount point is not read-only so we can remove the mnt directory.
         toggle_path_rw(mnt_pt, rw=True)
-        run_command([RMDIR, mnt_pt])
+        run_command([RMDIR, mnt_pt])  # Fails if not empty, a mnt_pt dir should be.
     else:
         logger.error(f"Mount point {mnt_pt} removal failed, skipping rmdir.")
     return unmounted

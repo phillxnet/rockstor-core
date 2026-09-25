@@ -46,6 +46,7 @@ from fs.btrfs import (
     balance_status_all,
     PROFILE,
     get_pool_labels,
+    UmountTreeNode,
 )
 from system.constants import NFS_EXPORT_ROOT
 from system.docker import docker_status
@@ -757,6 +758,22 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
 
     @transaction.atomic
     def delete(self, request, pid, command=""):
+        """
+        Un-import Pool by deleting all associated configuration and unmounting all;
+        user visible (uvisible) Snapshots, Shares.
+        - Check if passed by id Pool exists.
+        - Log if not mounted, or exceeds redundancy limit: continue with the Un-import.
+        - Delete all associated Scrub tasks & their associated crontab entries.
+        - Exception if not 'force' command (dated and requires review).
+        - Exception if Pool has Share/s and Docker service is running.
+        - Loop through Pool's Shares, building list of Share.names.
+        -- Delete Share associated Snapshot tasks & their crontab entries.
+        -- Unmount Share associated visible Snap subvols, building Share indexed dict.
+        -- Delete Share associated nfsexport_set entries after sub export_group deletes.
+        -- Unmount Share subvol.
+        - Delete Pool DB: cascade deletes Share DB
+        - Unmount Pool.
+        """
         force = True if (command == "force") else False
         with self._handle_exception(request):
             try:
@@ -788,8 +805,13 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                         taskdef.delete()
             share_name_list = []
             nfs_exports_list = []
-            # Share.name indexed dictionary of per Share visible (mounted) snapshots.
+            # Share.name indexed dictionary of in-Share mounted (visible) snapshots.
             visible_snap_lists = {str: list[str]}
+            # recursive unmount tree
+            pool_umount_tree: UmountTreeNode = UmountTreeNode(pool.mnt_pt)
+            # TODO: Separate concerns by:
+            #  1. Executing all required DB deletes while construcing an umount_tree.
+            #  2. Pass the full umount_tree to be depth first recursively executed on.
             sftp_exports_list = {}
             if Share.objects.filter(pool=pool).exists():
                 if not force:
@@ -814,6 +836,22 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                 logger.info(f"- Pool ({pool.name}) mount point {pool.mnt_pt}.")
                 for so in Share.objects.filter(pool=pool):
                     share_name_list.append(so.name)
+                    share_unmount_tree: UmountTreeNode = UmountTreeNode(so.mnt_pt)
+                    # SNAPSHOT TASKS
+                    # Akin to NFS EXPORTS: no Share cascade delete for these tasks.
+                    # Find & remove all Share's snapshot tasks before proceeding.
+                    if TaskDefinition.objects.filter(task_type="snapshot").exists():
+                        for taskdef in TaskDefinition.objects.filter(
+                            task_type="snapshot"
+                        ).all():
+                            if taskdef.share_name == so.name:
+                                logger.info(
+                                    f"- Deleting scheduled snapshot task ({taskdef.name}) for ({so.name})."
+                                )
+                                # ForeignKey on_delete=models.CASCADE, also removes scheduled
+                                # snap history in linked Task entries.
+                                # A TaskDefinition.delete() override updates our CRONTAB_FILE.
+                                taskdef.delete()
                     # VISIBLE SNAPSHOTS
                     # User visible (in-share) snapshot mounts; for SAMBA, SFTP, NFS.
                     for snap in Snapshot.objects.filter(share=so, uvisible=True):
@@ -821,21 +859,26 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                             visible_snap_lists[so.name].append(snap.name)
                         else:
                             visible_snap_lists[so.name] = [snap.name]
-                    logger.info(f"-- Share {so.name} has Visible snapshots: {visible_snap_lists[so.name]}")
+                        visible_snap_mnt_pt = f"{so.mnt_pt}/.{snap.name}"
+                        logger.info(
+                            f"-- Unmounting Snap subvol ({snap.name}) mount point {visible_snap_mnt_pt}."
+                        )
+                        # Consider block mount_teardown for a Share's uvisible snaps.
+                        # TODO: Transit visible_snap_mnt_pt list to parent share_unmount_tree
+                        #  avoiding the following intra atomic transaction piecemeal umount.
+                        mount_teardown(visible_snap_mnt_pt)
                     # SAMBA EXPORTS
                     # DB entries are auto removed via SambaShare
                     # model.OneToOneField("Share", related_name="sambashare", on_delete=models.CASCADE)
                     # See remove_smb_export(share_name_list) later in this transaction.
                     # SFTP EXPORTS
-                    # As per SAMBA exports, DB entries auto removed via Sftp
+                    # DB entries auto removed via Sftp
                     # model.OneToOneField("Share", on_delete=models.CASCADE)
-                    # See
-
+                    # See user_chroot_setup() later in this transaction.
                     # NFS EXPORTS
-                    # Unlike Samba & SFTP exports, NFS DB exports don't get auto-deleted
-                    # on pool.delete - via Share.ForeignKey to host Pool.
-                    # They just lose their Share reference - so itteratively remove all
-                    # linked export_groups before removing all related export_sets.
+                    # DB exports DO NOT get auto-deleted via a Share model.delete().
+                    # They only lose their Share reference; so iteratively remove all
+                    # linked export_groups before then removing all related export_sets.
                     if so.nfsexport_set.exists():
                         logger.info(f"- Deleting NFS DB configs for Share ({so.name}).")
                         nfs_exports_list.append(f"{NFS_EXPORT_ROOT}{so.name}")
@@ -845,26 +888,14 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
                             )
                             export_set.export_group.delete()
                         so.nfsexport_set.all().delete()
-                    # SNAPSHOT TASKS
-                    # Akin to NFS EXPORTS, we have no Share cascade delete for these
-                    # tasks. Find and remove all of this Share's snapshot tasks before
-                    # proceeding.
-                    if TaskDefinition.objects.filter(task_type="snapshot").exists():
-                        for taskdef in TaskDefinition.objects.filter(
-                            task_type="snapshot"
-                        ).all():
-                            if taskdef.share_name == so.name:
-                                logger.info(
-                                    f"- Deleting scheduled snapshot task ({taskdef.name}) for ({so.name})."
-                                )
-                                # The following, via ForeignKey on_delete=models.CASCADE,
-                                # also removes scheduled snap history in linked Task entries.
-                                # A TaskDefinition.delete() override updates our CRONTAB_FILE.
-                                taskdef.delete()
+
                     logger.info(
-                        f"-- Unmounting subvol ({so.name}) mount point {so.mnt_pt}."
+                        f"--- Unmounting Share subvol ({so.name}) mount point {so.mnt_pt}."
                     )
                     mount_teardown(so.mnt_pt)
+                    # END OF SHARE LOOP
+                # END POOL HAS SHARES
+            logger.info(f"-- Visible snapshots: {visible_snap_lists}")
             # TODO: Backgroup this Pool wide unmount
             logger.info(f"- Unmounting Pool ({pool.name}) mount point {pool.mnt_pt}.")
             mount_teardown(pool.mnt_pt)
@@ -873,8 +904,6 @@ class PoolDetailView(PoolMixin, rfc.GenericView):
             )
             pool.delete()
             # We may need to update disk state here.
-            # TODO: Cycle through Share.name indexed visible_snap_lists to unmount,
-            #  prior to then being able to unmount the Share itself.
             if share_name_list:
                 logger.debug(f"Share names affected: {share_name_list}.")
                 # Our SambaShare.delete() override to update smb.conf is bypassed
