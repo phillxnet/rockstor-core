@@ -841,7 +841,7 @@ def mount_root(pool):
 
 def mount_teardown(mnt_pt) -> bool:
     """
-    1. Attempt a lazy unmount for a non-default period.
+    1. Attempt a lazy unmount (lazy_umount() call) for a set period.
     2. If the lazy unmount fails; do a force unmount.
     3. Recheck mnt_pt's existence and double check no mounts exist.
     4. Ensure mnt_pt directory is read-write.
