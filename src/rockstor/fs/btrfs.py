@@ -19,6 +19,7 @@ import collections
 import json
 import re
 import os
+from dataclasses import field, dataclass
 from typing import List
 
 # N.B. Cannot import Pool & Share for type-hints as then circular:
@@ -279,11 +280,36 @@ PROFILE = {
 
 # Uses forward reference syntax to have recursive type hint.
 # https://peps.python.org/pep-0484/?ref=turingtaco.com#forward-references
+# Avoiding mutable default of "[]" for subvols e.g.: List["UmountTreeNode"] = []
+# as this will then be shared across all instances of this Class!!!
+# Hence, the use of a default_factory: list[type] = field(default_factory=list)
+@dataclass
 class UmountTreeNode:
-    def __init__(self, mnt_pt: str, subvols: List['UmountTreeNode'] = []):
-        self.mnt_pt = mnt_pt
-        self.subvols = subvols
+    path: str
+    subvols: list["UmountTreeNode"] = field(default_factory=list)
 
+    def __format__(self, format_spec: str):
+        if not format_spec:
+            return str(self)
+        parts = format_spec.split(":")
+        if parts[0] == "short":  # usage: f"{instance:short}"
+            prefix: str = "End-"
+            if self.subvols:
+                prefix = "Mid-"
+            return f"{prefix}Node({self.path})"
+        elif parts[0] == "long":  # usage: f"{instance:long}"
+            prefix: str = "End-"
+            if self.subvols:
+                prefix = "Mid-" 
+            tn_str: str = ""
+            for element in self.subvols:
+                if not element.subvols:
+                    tn_str += f"End-Node({element.path}: []), "
+                else:
+                    tn_str += f"{element:short}, "
+            return f"{prefix}Node({self.path}, subvols=[{tn_str}])"
+        else:
+            return str(self)
 
 def add_pool(pool, disks):
     """
