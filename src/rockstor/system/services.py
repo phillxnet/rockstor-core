@@ -74,6 +74,10 @@ def init_service_op(service_name, command, throw=True):
     if service_name not in supported_services:
         raise Exception("unknown service: {}".format(service_name))
 
+    if service_name == "rpcbind":
+        # rpcbind.socket is the trigger unit for the rpcbind.service
+        service_name = "rpcbind.service"
+
     arg_list = [SYSTEMCTL, command, service_name]
     if command == "status":
         arg_list.append("--lines=0")
