@@ -88,7 +88,7 @@ def task_completed(signal, task):
         case "clear_taskid":
             pass
         case _:
-            logger.error(f"No known task_completed jobs to execute for {task.name}.")
+            logger.info(f"No known task_completed jobs to execute for {task.name}.")
 
 
 @HUEY.signal(SIGNAL_ERROR, SIGNAL_LOCKED)
