@@ -286,6 +286,7 @@ def user_chroot_setup():
     """
     Establishes the required user chroots config for the SFTP exported Share owners.
     """
+    logger.info(f"user_chroot_setup() CALLED.")
     user_chroot_map = {}
     for sftp_export in SFTP.objects.all():
         user_chroot_map[sftp_export.share.owner] = (
