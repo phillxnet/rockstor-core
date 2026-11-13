@@ -1255,7 +1255,8 @@ def remove_share_subvol(share, force: bool = False):
     pool_mnt = share.pool.mnt_pt
     if share.is_mounted:
         # N.B. we only unmount rockstor managed share points: "/mnt2/share-name".
-        mount_teardown(share.mnt_pt)
+        # Likely we need this @task to be run in the foreground: ergo call_local()
+        mount_teardown.call_local([share.mnt_pt])
     subvol_mnt_pt = pool_mnt + "/" + share.name
     if not is_subvol(subvol_mnt_pt):
         return None
@@ -1292,7 +1293,8 @@ def remove_snap_subvol(snap):
     pool_mnt = snap.share.pool.mnt_pt
     snap_path = f"{pool_mnt}/.snapshots/{snap.share.name}/{snap.name}"
     if is_mounted(snap_path):
-        mount_teardown(snap_path)
+        # Likely we need this @task to be run in the foreground: ergo call_local()
+        mount_teardown.call_local([snap_path])
     if is_subvol(snap_path):
         qgroup_remove(snap.qgroup, snap.share.pqgroup, snap_path)
         run_command([BTRFS, "subvolume", "delete", snap_path], log=True)
