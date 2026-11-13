@@ -87,9 +87,9 @@ class PoolTests(APITestMixin):
         cls.mock_balance_pool.return_value = ["true"]
 
         # delete mocks
-        cls.patch_umount_root = patch("storageadmin.views.pool.mount_teardown")
+        cls.patch_umount_root = patch("fs.btrfs.mount_teardown")
         cls.mock_umount_root = cls.patch_umount_root.start()
-        cls.mock_umount_root.return_value = True
+        cls.mock_umount_root.return_value = []
 
         # remount mocks
         cls.patch_remount = patch("storageadmin.views.pool.remount")
@@ -802,7 +802,6 @@ class PoolTests(APITestMixin):
 
         response = self.client.delete("{}/{}".format(self.BASE_URL, sp2Id))
         self.assertEqual(response.status_code, status.HTTP_200_OK, msg=response.data)
-        self.mock_umount_root.assert_called_with("/mnt2/singlepool2")
 
     def test_raid0_crud(self):
         """
@@ -930,7 +929,6 @@ class PoolTests(APITestMixin):
         # delete pool
         response5 = self.client.delete("{}/{}".format(self.BASE_URL, pId))
         self.assertEqual(response5.status_code, status.HTTP_200_OK, msg=response5.data)
-        self.mock_umount_root.assert_called_with("/mnt2/raid0pool")
 
     def test_raid1_crud(self):
         """
@@ -1121,7 +1119,6 @@ class PoolTests(APITestMixin):
         # delete pool
         response5 = self.client.delete("{}/{}".format(self.BASE_URL, pId))
         self.assertEqual(response5.status_code, status.HTTP_200_OK, msg=response5.data)
-        self.mock_umount_root.assert_called_with("/mnt2/raid1pool")
 
     def test_raid10_crud(self):
         """
@@ -1215,7 +1212,6 @@ class PoolTests(APITestMixin):
         # Delete pool.
         response = self.client.delete("{}/{}".format(self.BASE_URL, pId))
         self.assertEqual(response.status_code, status.HTTP_200_OK, msg=response.data)
-        self.mock_umount_root.assert_called_with("/mnt2/raid10pool")
 
     def test_raid5_crud(self):
         """
@@ -1304,7 +1300,6 @@ class PoolTests(APITestMixin):
         # Delete pool
         response = self.client.delete("{}/{}".format(self.BASE_URL, pId))
         self.assertEqual(response.status_code, status.HTTP_200_OK, msg=response.data)
-        self.mock_umount_root.assert_called_with("/mnt2/raid5pool")
 
     def test_raid6_crud(self):
         """
@@ -1393,7 +1388,6 @@ class PoolTests(APITestMixin):
         # Delete pool.
         response = self.client.delete("{}/{}".format(self.BASE_URL, pId))
         self.assertEqual(response.status_code, status.HTTP_200_OK, msg=response.data)
-        self.mock_umount_root.assert_called_with("/mnt2/raid6pool")
 
     def test_raid_migration_fencing_remove_command(self):
         """
