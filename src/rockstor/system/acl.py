@@ -98,7 +98,8 @@ def acl_change_manager(
     chmod_task_handler(blocking=True)  # Wait for task completion.
     # If this subvol was previously unmounted, return it to that state.
     if was_unmounted:
-        mount_teardown(mnt_pt)
+        # N.B. we have one @task invoking another...
+        mount_teardown([mnt_pt])
 
 
 def chown_or_chmod_active(mnt_pt: str) -> bool:
