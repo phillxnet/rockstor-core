@@ -520,7 +520,7 @@ def toggle_path_rw(path, rw=True):
     attr = "-i"
     if not rw:
         attr = "+i"
-    return run_command([CHATTR, attr, path])
+    return run_command([CHATTR, attr, path], log=True)
 
 
 def config_network_device(
@@ -803,44 +803,43 @@ def remount(mnt_pt, mnt_options):
     return True
 
 
-def lazy_unmount(mnt_pt, wait: int = 2) -> bool:
+def lazy_unmount(mnt_pts: list[str], max_wait: int = 2) -> list[str]:
     """
-    Lazy un-mount wrapper: "umount -line mnt_pt" with race detection.
-    Uses repeat calls to findmnt, within 'wait' secs, to confirm mount no longer exists.
-    Expected runtime limited to 'wait' seconds.
-    N.B. When used with SFTP exports, in-chroot recursive bind mounts, we end-up
-    unmounting all visible snapshots from within the source Share also!
-    :param mnt_pt: mount point.
-    :param wait: second to wait for lazy mount to complete successfully.
-    :return: 'True' on confirmed unmounted, 'False' otherwise or on 'wait' secs exceeded.
+    Lazy un-mount "umount --lazy mnt_pts" with max_wait follow-up confirmation checks.
+    Uses repeat calls to findmnt, within 'wait' secs, to confirm no mounts exists.
+    Expected runtime limited to around 'max_wait' seconds.
+    N.B. When used with SFTP exports' in-chroot recursive bind mounts, we also unmount
+    all visible snapshots from within the parent Share: bind/rbind is bidirectional.
+    :param mnt_pts: List of mount points to unmount.
+    :param max_wait: Max seconds to confirm all paths unmounted.
+    :return: list of remaining mounted paths (unconfirmed unmounted), after max_wait.
     """
-    if not os.path.exists(mnt_pt):
-        # No path means nothing can be mounted here.
-        return True
-    if not is_mounted(mnt_pt):
-        return True
+    # Filter out non-existent paths, or already unmounted paths.
+    mounted_paths: list[str] = [
+        path for path in mnt_pts if os.path.exists(path) and is_mounted(path)
+    ]
+    if not mounted_paths:  # Empty List so we are done.
+        return mounted_paths
     start_time = time.time()
-    try:
-        # -l Lazy: detach fs now, clean-up referendes to the fs once no longer busy.
-        out, err, rc = run_command([UMOUNT, "-l", mnt_pt], log=True)
-    except CommandException as ce:
-        # Catch race between is_mounted() & os.path:exists() returning `True`
-        if ce.rc == 32:  # Not mounted, or specified path vanished.
-            for line in ce.err:
-                line = line.strip()
-                if any(line.endswith(f"{error}") for error in UMOUNT_ERR_WHITELIST):
-                    return True
-        raise ce
-    sleep_period: float = 0.2
-    while (time.time() - start_time) < wait:
-        # is_mounted() timed at 0.003 seconds; while findmnt_bool() at 0.02 seconds.
-        # Trusting findmnt as /proc/mounts may be disconnected by lazy umount.
-        if not findmnt_bool(mnt_pt):
-            return True
-        logger.info(f"Lazy unmount check waiting for {sleep_period} seconds.")
-        time.sleep(sleep_period)
-    logger.info("Lazy unmount check timed out - returning False")
-    return False
+    # Parallel lazy umount on all mounted paths - opportunistic.
+    # -l Lazy: detach fs now, clean-up references to the fs once no longer busy.
+    # Safe for bind/rbind (/mnt3) & btrfs mount options subvol or subvolid (our /mnt2)
+    # - https://btrfs.readthedocs.io/en/latest/Subvolumes.html#subvolumes
+    cmd: list[str] = [UMOUNT, "--lazy", "--recursive"]
+    cmd.extend(mounted_paths)
+    logger.info(f"Executing umount command: {cmd}")
+    run_command(cmd, log=True, throw=False)
+    while (time.time() - start_time) < max_wait and mounted_paths:
+        # Cycle through remaining mounted paths; removing confirmed unmounted members.
+        confirmed_unmounted: list[str] = []
+        for path_index in range(len(mounted_paths)):
+            path: str = mounted_paths[path_index]
+            # N.B is_mounted() timed at 0.003 secs, findmnt_bool() at 0.02 seconds.
+            if not findmnt_bool(path):  # Trusting findmnt as more resourceful.
+                confirmed_unmounted.append(path)
+        for each_path in confirmed_unmounted:
+            mounted_paths.remove(each_path)
+    return mounted_paths
 
 
 def wipe_disk(disk_byid):

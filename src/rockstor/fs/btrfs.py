@@ -865,32 +865,46 @@ def mount_root(pool):
     )
 
 
-def mount_teardown(mnt_pt) -> bool:
+@task()
+def mount_teardown(mnt_pts: list[str]) -> list[str]:
     """
-    1. Attempt a lazy unmount (lazy_umount() call) for a set period.
-    2. If the lazy unmount fails; do a force unmount.
-    3. Recheck mnt_pt's existence and double check no mounts exist.
-    4. Ensure mnt_pt directory is read-write.
-    5. Remove mnt_pt directory, i.e. `rmdir mnt_pt`.
-    :param mnt_pt: Pool or Share (both are subvols) mount point.
-    :return: True if completion, False if a problem was encountered.
+    1. Attempt a lazy unmount (via lazy_umount() call) for a set period.
+    2. If the lazy unmount fails; force unmount the remaining mounts returned.
+    3. Recheck all paths still exist, and each has no active mounts.
+    4. If 3 Ensure each mnt_pts directory is read-write.
+    5. If 3 Remove each mnt_pts directory, i.e. `rmdir mnt_pt`.
+
+    - This procedure and its helpers must not interact with the Django DB, we are below
+      that level as we use only @task() not @db_task.
+    Note The Huey async bypass function (mount_teardown.call_local()) bypasses our
+    @task() decorator, we are then called directly and not background scheduled.
+    See: https://huey.readthedocs.io/en/latest/guide.html#tips-and-tricks
+    :param mnt_pts: List of Pool or Share (both are subvols) mount points.
+    :return: List of failed teardowns
     """
-    if not os.path.exists(mnt_pt):
-        return True
-    unmounted: bool = lazy_unmount(mnt_pt, wait=4)
-    if not unmounted:
-        # Can be long-running!
-        logger.info("Executing forced unmount - review lazy_unmount() timings.")
-        run_command([UMOUNT, "--force", mnt_pt], log=True)
-    # Check mount point exists again before attempting to remove it,
-    # and double check there are no remaining mounts:
-    if os.path.exists(mnt_pt) and not findmnt_bool(mnt_pt):
-        # Ensure mount point is not read-only so we can remove the mnt directory.
-        toggle_path_rw(mnt_pt, rw=True)
-        run_command([RMDIR, mnt_pt])  # Fails if not empty, a mnt_pt dir should be.
-    else:
-        logger.error(f"Mount point {mnt_pt} removal failed, skipping rmdir.")
-    return unmounted
+    mounted: list[str] = lazy_unmount(mnt_pts, max_wait=4)
+    if mounted:  # Not an empty list.
+        cmd: list[str] = [UMOUNT, "--force", "--recursive"]
+        cmd.extend(mounted)
+        logger.info(f"Executing unmount command {cmd} - REVIEW lazy_unmount() TIMINGS.")
+        run_command(cmd, log=True)
+    # Check all passed mount points still exists before attempting to remove them,
+    # and double check that there are no remaining mounts:
+    fail_list: list[str] = []
+    for mnt_pt in mnt_pts:
+        if os.path.exists(mnt_pt):
+            if not findmnt_bool(mnt_pt):
+                # Ensure mount point is not read-only so we can remove the mnt directory.
+                toggle_path_rw(mnt_pt, rw=True)
+                run_command(
+                    [RMDIR, mnt_pt], log=True
+                )  # Fails if not empty, a mnt_pt dirs should be.
+            else:
+                logger.error(f"Mount point {mnt_pt} in use - SKIPPING TEARDOWN.")
+                fail_list.append(mnt_pt)
+        else:
+            logger.info(f"Mount point {mnt_pt} non-existent - we are done.")
+    return fail_list
 
 
 def is_subvol(mnt_pt):

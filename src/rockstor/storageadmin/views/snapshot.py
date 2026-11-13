@@ -106,8 +106,10 @@ class SnapshotView(NFSExportMixin, rfc.GenericView):
                 except Exception as e:
                     logger.exception(e)
                 finally:
-                    mount_teardown(export_pt)
-                    mount_teardown(snap_mnt_pt)
+                    # N.B. mount_teardown() can now manage lists of mount points.
+                    # Consider if this now @task needs a .call_local treatment here.
+                    mount_teardown([export_pt])
+                    mount_teardown([snap_mnt_pt])
         exports = self.create_nfs_export_input(cur_exports)
         adv_entries = [x.export_str for x in AdvancedNFSExport.objects.all()]
         exports_d = self.create_adv_nfs_export_input(adv_entries, self.request)

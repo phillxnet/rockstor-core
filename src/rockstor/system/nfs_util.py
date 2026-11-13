@@ -43,15 +43,14 @@ I.e.:
 
 def nfs4_mount_teardown(export_paths: list[str]):
     """
-    Filter to send only nfs4 mounts within the passed list to mount_teardown.
-    :param export_paths: Bind mount points for NFS exports e.g.: `/export/nfs_export1`
+    Filter to send only nfs4 mounts within the passed list, to mount_teardown().
+    :param export_paths: NFS export bind mount points e.g.: ["/export/nfs_export1"].
     N.B. Moved from system.osi.
     """
-    # N.B. candidate for parallelisation.
-    for export_path in export_paths:
-        if not export_path.startswith(NFS_EXPORT_ROOT):
-            continue
-        mount_teardown(export_path)
+    nfs_export_paths = [
+        path for path in export_paths if path.startswith(NFS_EXPORT_ROOT)
+    ]
+    mount_teardown(nfs_export_paths)
     return None
 
 
