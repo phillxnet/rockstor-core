@@ -283,7 +283,7 @@ def remove_sftp_share_bindmount(share_name: str, share_owner: str):
     chroot_path = f"{SFTP_MNT_ROOT}{share_owner}/"
     # SFTP exported Share in-chroot bind-mount.
     sftp_export_path = f"{chroot_path}{share_name}"
-    result:bool = lazy_unmount(sftp_export_path)
+    result:bool = bool(lazy_unmount([sftp_export_path]))
     return result
 
 
